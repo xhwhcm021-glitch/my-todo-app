@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React 待办事项</title>
+  <!-- 引入React CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, sans-serif;
+    }
+
+    .todo-container {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 0 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .todo-input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .todo-input:focus {
+      border-color: #409eff;
+    }
+
+    .add-btn {
+      padding: 10px 18px;
+      background-color: #409eff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .add-btn:hover {
+      background-color: #337ecc;
+    }
+
+    .todo-list {
+      list-style: none;
+    }
+
+    .todo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .todo-text {
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .completed .todo-text {
+      text-decoration: line-through;
+      color: #999;
+    }
+
+    .del-btn {
+      padding: 6px 12px;
+      background: #f56c6c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .del-btn:hover {
+      background: #e05252;
+    }
+
+    .empty-tip {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    function App() {
+      // 待办列表数据
+      const [todoList, setTodoList] = useState([]);
+      // 输入框内容
+      const [inputValue, setInputValue] = useState('');
+
+      // 添加待办
+      const addTodo = () => {
+        const text = inputValue.trim();
+        if (!text) return; // 空内容不添加
+
+        const newTodo = {
+          id: Date.now(), // 时间戳作为唯一id
+          text: text,
+          completed: false
+        };
+        setTodoList([...todoList, newTodo]);
+        setInputValue(''); // 添加后清空输入框
+      };
+
+      // 回车添加待办
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          addTodo();
+        }
+      };
+
+      // 切换完成状态
+      const toggleComplete = (id) => {
+        setTodoList(todoList.map(item =>
+          item.id === id ? { ...item, completed: !item.completed } : item
+        ))
+      };
+
+      // 删除待办
+      const deleteTodo = (id) => {
+        setTodoList(todoList.filter(item => item.id !== id));
+      };
+
+      return (
+        <div className="todo-container">
+          <h1>待办事项</h1>
+          <div className="input-area">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="请输入待办事项..."
+              className="todo-input"
+            />
+            <button onClick={addTodo} className="add-btn">添加</button>
+          </div>
+
+          <ul className="todo-list">
+            {todoList.length === 0 ? (
+              <li className="empty-tip">暂无待办事项</li>
+            ) : (
+              todoList.map(todo => (
+                <li key={todo.id} className={todo.completed ? 'todo-item completed' : 'todo-item'}>
+                  <span onClick={() => toggleComplete(todo.id)} className="todo-text">
+                    {todo.text}
+                  </span>
+                  <button onClick={() => deleteTodo(todo.id)} className="del-btn">删除</button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
