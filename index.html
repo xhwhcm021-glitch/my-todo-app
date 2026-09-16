@@ -73,7 +73,6 @@
       transform: translateY(0);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
-
     /* 夜间模式 统一样式 */
     body.night-mode {
       background-color: #2d2d2d;
@@ -108,7 +107,6 @@
       transform: translateY(0);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     }
-
     /* 待办事项区 */
     .todo-section {
       padding-bottom: 1rem;
@@ -162,8 +160,8 @@
       transform: translateY(-2px);
     }
     .todo-list {
-      list-style: disc;
-      padding-left: 1.5rem;
+      list-style: none;
+      padding-left: 0;
     }
     .todo-item {
       display: flex;
@@ -172,7 +170,18 @@
       color: #333333;
       font-size: 1rem;
       line-height: 1.8;
-      margin: 6px 0;
+      margin: 8px 0;
+      flex-wrap: wrap;
+      gap:6px;
+    }
+    .todo-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .todo-index{
+      color:#00c853;
+      font-weight:bold;
     }
     .todo-text {
       cursor: pointer;
@@ -187,6 +196,11 @@
       text-decoration: line-through;
       color: #888;
     }
+    .todo-time{
+      font-size:0.8rem;
+      color:#777;
+      margin-left:10px;
+    }
     .todo-del-btn {
       padding: 4px 8px;
       border: none;
@@ -194,7 +208,6 @@
       background-color: #ff4444;
       color: #fff;
       cursor: pointer;
-      margin-left:12px;
       white-space: nowrap;
     }
     .todo-del-btn:hover {
@@ -214,7 +227,9 @@
     body.night-mode .todo-text.finish {
       color:#aaa;
     }
-
+    body.night-mode .todo-time{
+      color:#bbbbbb;
+    }
     /* 主视觉区卡片 */
     .hero {
       display: flex;
@@ -265,7 +280,6 @@
       font-size: 1.25rem;
       margin-top: 1rem;
     }
-
     /* 最新文章区 */
     .articles {
       padding: 1rem 0 4rem;
@@ -302,7 +316,6 @@
       font-size: 0.95rem;
       line-height: 1.6;
     }
-
     /* 底部页脚 */
     .footer {
       text-align: center;
@@ -311,7 +324,6 @@
       font-size: 0.95rem;
       opacity: 0.9;
     }
-
     /* ========== 移动端适配（手机屏幕 768px以下）========== */
     @media screen and (max-width:768px){
       .container {
@@ -371,7 +383,6 @@
       </nav>
     </div>
   </header>
-
   <section class="todo-section">
     <div class="container">
       <div class="todo-card">
@@ -384,7 +395,6 @@
       </div>
     </div>
   </section>
-
   <main>
     <section class="hero">
       <div class="container">
@@ -399,7 +409,6 @@
         </div>
       </div>
     </section>
-
     <section class="articles">
       <div class="container">
         <h2 class="section-title">最新文章</h2>
@@ -420,78 +429,92 @@
       </div>
     </section>
   </main>
-
   <footer class="footer">
     <div class="container">
       <p>@2026我的个人主页</p>
     </div>
   </footer>
-
   <script>
+    const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
     // 夜间模式切换
     const nightModeBtn = document.getElementById('night-mode-btn');
     nightModeBtn.addEventListener('click', function () {
       document.body.classList.toggle('night-mode');
     });
-
-    // 待办事项
     const todoInput = document.getElementById('todo-input');
     const todoAddBtn = document.getElementById('todo-add-btn');
     const todoList = document.getElementById('todo-list');
 
-    // 从本地存储读取数据
-    function getTodos() {
-      const data = localStorage.getItem('todos');
-      return data ? JSON.parse(data) : [];
-    }
-    // 保存到本地存储
-    function saveTodos(list) {
-      localStorage.setItem('todos', JSON.stringify(list));
+    // 从后端获取列表
+    async function getTodos() {
+      const res = await fetch(`${BASE_URL}/todos`);
+      const data = await res.json();
+      return data;
     }
 
-    // 渲染待办列表
-    function renderTodos() {
+    // 渲染待办，增加序号+时间
+    async function renderTodos() {
       todoList.innerHTML = '';
-      const todos = getTodos();
-      todos.forEach((item, index) => {
+      const todos = await getTodos();
+      todos.forEach((item, arrIndex) => {
         const li = document.createElement('li');
         li.className = 'todo-item';
 
+        const wrapLeft = document.createElement("div");
+        wrapLeft.className = "todo-left";
+
+        // 序号
+        const spanIndex = document.createElement('span');
+        spanIndex.className = "todo-index";
+        spanIndex.textContent = `${arrIndex+1}.`;
+
+        // 待办文字
         const spanText = document.createElement('span');
         spanText.className = 'todo-text' + (item.done ? ' finish' : '');
         spanText.textContent = item.text;
 
-        // 点击文字切换完成状态
-        spanText.addEventListener('click', () => {
-          todos[index].done = !todos[index].done;
-          saveTodos(todos);
+        // 创建时间
+        const spanTime = document.createElement('span');
+        spanTime.className = "todo-time";
+        spanTime.textContent = item.create_time;
+
+        // 点击文字切换完成状态，使用后端真实id
+        spanText.addEventListener('click', async () => {
+          await fetch(`${BASE_URL}/todos/${item.id}`, {method:"PUT"});
           renderTodos();
         })
+
+        wrapLeft.appendChild(spanIndex);
+        wrapLeft.appendChild(spanText);
+        wrapLeft.appendChild(spanTime);
 
         // 删除按钮
         const delBtn = document.createElement('button');
         delBtn.className = 'todo-del-btn';
         delBtn.textContent = '删除';
-        delBtn.addEventListener('click', (e) => {
+        delBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          todos.splice(index,1);
-          saveTodos(todos);
+          await fetch(`${BASE_URL}/todos/${item.id}`, {method:"DELETE"});
           renderTodos();
         })
 
-        li.appendChild(spanText);
+        li.appendChild(wrapLeft);
         li.appendChild(delBtn);
         todoList.appendChild(li);
       })
     }
 
     // 添加待办
-    function addTodo() {
+    async function addTodo() {
       const text = todoInput.value.trim();
       if (!text) return;
-      const todos = getTodos();
-      todos.push({text, done:false});
-      saveTodos(todos);
+      await fetch(`${BASE_URL}/todos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({text:text, done:false})
+      })
       renderTodos();
       todoInput.value = '';
     }
@@ -500,7 +523,6 @@
     todoInput.addEventListener('keydown', function(e){
       if(e.key === 'Enter') addTodo();
     });
-
     // 页面加载渲染
     renderTodos();
   </script>
