@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
 
 # ========== 数据库配置 ==========
-SQLALCHEMY_DATABASE_URL = "sqlite:///E:/002/todo.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./todo.db"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -92,3 +92,9 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     db.delete(todo)
     db.commit()
     return {"ok": True}
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    # 读取云平台分配的端口，本地默认8000
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
