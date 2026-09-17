@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+import os
+import uvicorn
 
 # SQLite数据库，文件在项目根目录 ./todo.db
 SQLALCHEMY_DATABASE_URL = "sqlite:///./todo.db"
@@ -12,7 +13,10 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+
+# ✅ 新版SQLAlchemy，替代旧的 declarative_base()，消除MovedIn20Warning
+class Base(DeclarativeBase):
+    pass
 
 app = FastAPI()
 
@@ -88,3 +92,8 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     db.delete(todo_item)
     db.commit()
     return {"ok": True}
+
+# ✅ 本地运行入口，读取环境变量PORT，兼容Render部署和本地测试
+if __name__ == '__main__':
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
