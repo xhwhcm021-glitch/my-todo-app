@@ -436,7 +436,9 @@
   </footer>
 
 <script>
+  // ========= 改成你自己Render后端地址 =========
   const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+
   // 夜间模式切换
   const nightModeBtn = document.getElementById('night-mode-btn');
   nightModeBtn.addEventListener('click', function () {
@@ -449,12 +451,19 @@
 
   // 从后端获取列表
   async function getTodos() {
-    const res = await fetch(`${BASE_URL}/todos`);
-    const data = await res.json();
-    return data;
+    try {
+      const res = await fetch(`${BASE_URL}/todos`);
+      if(!res.ok) throw new Error("接口请求失败");
+      const data = await res.json();
+      return data;
+    }catch(err){
+      console.error("获取待办失败：", err);
+      alert("获取待办失败！检查后端是否启动/跨域");
+      return [];
+    }
   }
 
-  // 渲染待办，适配后端字段 content / is_done / created_at
+  // 渲染待办，展示后端返回北京时间
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -471,19 +480,22 @@
       const spanText = document.createElement('span');
       spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
       spanText.textContent = item.content;
-      // 创建时间
+      // 创建时间（后端已经+8h，直接展示）
       const spanTime = document.createElement('span');
       spanTime.className = "todo-time";
       spanTime.textContent = item.created_at;
 
       // 点击文字切换完成状态，调用PUT接口
       spanText.addEventListener('click', async () => {
-        await fetch(`${BASE_URL}/todos/${item.id}`, {
-          method:"PUT",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({is_done: !item.is_done})
-        });
-        renderTodos();
+        try{
+          await fetch(`${BASE_URL}/todos/${item.id}?is_done=${!item.is_done}`, {
+            method:"PUT"
+          });
+          renderTodos();
+        }catch(err){
+          console.error("更新失败",err);
+          alert("更新待办失败");
+        }
       })
       wrapLeft.appendChild(spanIndex);
       wrapLeft.appendChild(spanText);
@@ -495,8 +507,13 @@
       delBtn.textContent = '删除';
       delBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        await fetch(`${BASE_URL}/todos/${item.id}`, {method:"DELETE"});
-        renderTodos();
+        try{
+          await fetch(`${BASE_URL}/todos/${item.id}`, {method:"DELETE"});
+          renderTodos();
+        }catch(err){
+          console.error("删除失败",err);
+          alert("删除待办失败");
+        }
       })
       li.appendChild(wrapLeft);
       li.appendChild(delBtn);
@@ -504,26 +521,26 @@
     })
   }
 
-  // 添加待办，适配后端POST接口，参数用url传content
- async function addTodo() {
-  const text = todoInput.value.trim();
-  if (!text) return;
-  try {
-    const res = await fetch(`${BASE_URL}/todos`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ content: text })
-    })
-    if (!res.ok) throw new Error("服务器返回异常");
-    renderTodos();
-    todoInput.value = '';
-  } catch (err) {
-    console.error("添加待办失败：", err);
-    alert("添加失败：" + err.message);
+  // 添加待办：使用JSON body传递参数，匹配后端TodoCreate模型
+  async function addTodo() {
+    const text = todoInput.value.trim();
+    if (!text) return;
+    try{
+      const res = await fetch(`${BASE_URL}/todos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ content: text })
+      })
+      if (!res.ok) throw new Error("服务器返回异常");
+      renderTodos();
+      todoInput.value = '';
+    }catch(err){
+      console.error("添加待办失败：", err);
+      alert("添加失败！"+err.message);
+    }
   }
-}
 
   todoAddBtn.addEventListener('click', addTodo);
   todoInput.addEventListener('keydown', function(e){
