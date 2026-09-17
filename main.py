@@ -9,13 +9,20 @@ import uvicorn
 
 # SQLite数据库，文件在项目根目录 ./todo.db
 SQLALCHEMY_DATABASE_URL = "sqlite:///./todo.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# 读取 Render 云端环境变量
+import os
 
-# ✅ 新版SQLAlchemy，替代旧的 declarative_base()，消除MovedIn20Warning
-class Base(DeclarativeBase):
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    # 本地测试保底使用 SQLite，云端缺失变量会直接报错提醒
+    DATABASE_URL = "sqlite:///./todo.db"
+
+# 极其关键！Render 给的是 postgres://，SQLAlchemy 需要 postgresql://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {})
     pass
 
 app = FastAPI()
