@@ -7,27 +7,26 @@ from pydantic import BaseModel
 import os
 import uvicorn
 
-# SQLite数据库，文件在项目根目录 ./todo.db
-SQLALCHEMY_DATABASE_URL = "sqlite:///./todo.db"
-# 读取 Render 云端环境变量
-import os
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if not DATABASE_URL:
-    # 本地测试保底使用 SQLite，云端缺失变量会直接报错提醒
-    DATABASE_URL = "sqlite:///./todo.db"
-
-# 极其关键！Render 给的是 postgres://，SQLAlchemy 需要 postgresql://
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+# 读取数据库连接地址，兼容Render的PostgreSQL，自动把postgres://改成postgresql://
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./todo.db")
+if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {})
-pass
+# 创建数据库引擎
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# ✅ 严格顺序：先定义Base，后面Todo模型继承Base
+class Base(DeclarativeBase):
+    pass
 
 app = FastAPI()
 
-# 跨域配置，允许全部前端访问
+# CORS跨域配置
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,23 +35,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 数据库模型 Todo
+# 数据库表模型 Todo，必须写在Base定义之后
 class Todo(Base):
     __tablename__ = "todos"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String, nullable=False)
     is_done = Column(Boolean, default=False)
-    # 创建时间：自动记录北京时间 UTC+8
+    # 北京时间，UTC+8
     created_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=8))
 
-# Pydantic 校验模型，接收前端JSON
+# Pydantic 请求校验模型
 class TodoCreate(BaseModel):
     content: str
 
 # 创建数据表
 Base.metadata.create_all(bind=engine)
 
-# 获取数据库会话
+# 获取数据库会话依赖
 def get_db():
     db = SessionLocal()
     try:
@@ -70,7 +69,7 @@ def read_root():
 def get_all_todos(db: Session = Depends(get_db)):
     return db.query(Todo).all()
 
-# 新增待办（接收JSON）
+# 新增待办，接收JSON
 @app.post("/todos")
 def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
     new_todo = Todo(content=todo.content)
@@ -79,7 +78,7 @@ def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
     db.refresh(new_todo)
     return new_todo
 
-# 更新完成状态
+# 更新待办完成状态
 @app.put("/todos/{todo_id}")
 def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db)):
     todo_item = db.query(Todo).filter(Todo.id == todo_id).first()
@@ -100,7 +99,7 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# ✅ 本地运行入口，读取环境变量PORT，兼容Render部署和本地测试
+# 本地运行入口，读取PORT环境变量，适配Render
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
