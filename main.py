@@ -66,12 +66,13 @@ def get_all_todos(db: Session = Depends(get_db)):
 
 # 新增待办
 @app.post("/todos")
-def create_todo(item: dict, db: Session = Depends(get_db)):
-    new_todo = Todo(content=item["text"], is_done=False)
+def create_todo(content: str, db: Session = Depends(get_db)):
+    new_todo = Todo(content=content, is_done=False)
     db.add(new_todo)
     db.commit()
     db.refresh(new_todo)
-    return {"ok": True}
+    return new_todo
+
 
 # 切换完成状态
 @app.put("/todos/{todo_id}")

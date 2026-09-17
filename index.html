@@ -505,15 +505,25 @@
   }
 
   // 添加待办，适配后端POST接口，参数用url传content
-  async function addTodo() {
-    const text = todoInput.value.trim();
-    if (!text) return;
-    await fetch(`${BASE_URL}/todos?content=${encodeURIComponent(text)}`, {
-      method: "POST"
+ async function addTodo() {
+  const text = todoInput.value.trim();
+  if (!text) return;
+  try {
+    const res = await fetch(`${BASE_URL}/todos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ content: text })
     })
+    if (!res.ok) throw new Error("服务器返回异常");
     renderTodos();
     todoInput.value = '';
+  } catch (err) {
+    console.error("添加待办失败：", err);
+    alert("添加失败：" + err.message);
   }
+}
 
   todoAddBtn.addEventListener('click', addTodo);
   todoInput.addEventListener('keydown', function(e){
