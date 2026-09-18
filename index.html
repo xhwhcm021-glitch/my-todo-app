@@ -197,19 +197,16 @@
       text-decoration: line-through;
       color: #888;
     }
-    /* AI分类标签 */
+    /* ===== AI分类标签：灰色背景、圆角 ===== */
     .todo-category {
       font-size: 0.75rem;
       padding: 2px 10px;
       border-radius: 12px;
-      color: #fff;
+      background-color: #e0e0e0;
+      color: #555555;
       font-weight: 600;
       white-space: nowrap;
     }
-    .cat-学习 { background-color: #4a90d9; }
-    .cat-生活 { background-color: #7ed321; }
-    .cat-工作 { background-color: #f5a623; }
-    .cat-其他 { background-color: #9b9b9b; }
     .todo-time{
       font-size:0.8rem;
       color:#777;
@@ -243,6 +240,10 @@
     }
     body.night-mode .todo-time{
       color:#bbbbbb;
+    }
+    body.night-mode .todo-category {
+      background-color: #555555;
+      color: #dddddd;
     }
     /* 主视觉区卡片 */
     .hero {
@@ -490,7 +491,7 @@
     }
   }
 
-  // 渲染待办：序号 + 文字 + AI分类标签 + 时间 + 删除按钮
+  // 渲染待办：序号 + 文字 + 分类标签(灰色圆角) + 时间 + 删除按钮
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -507,11 +508,10 @@
       const spanText = document.createElement('span');
       spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
       spanText.textContent = item.content;
-      // AI分类标签
-      const cat = item.category || "其他";
+      // AI分类标签（灰色圆角小标签）
       const spanCat = document.createElement('span');
-      spanCat.className = 'todo-category cat-' + cat;
-      spanCat.textContent = cat;
+      spanCat.className = 'todo-category';
+      spanCat.textContent = item.category || "其他";
       // 创建时间
       const spanTime = document.createElement('span');
       spanTime.className = "todo-time";
