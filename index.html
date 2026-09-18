@@ -178,7 +178,7 @@
       display:flex;
       align-items:center;
       gap:10px;
-      flex-wrap: wrap;
+      flex-wrap:wrap;
     }
     .todo-index{
       color:#00c853;
@@ -197,17 +197,23 @@
       text-decoration: line-through;
       color: #888;
     }
+    /* AI分类标签 */
+    .todo-category {
+      font-size: 0.75rem;
+      padding: 2px 10px;
+      border-radius: 12px;
+      color: #fff;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .cat-学习 { background-color: #4a90d9; }
+    .cat-生活 { background-color: #7ed321; }
+    .cat-工作 { background-color: #f5a623; }
+    .cat-其他 { background-color: #9b9b9b; }
     .todo-time{
       font-size:0.8rem;
       color:#777;
-    }
-    /* AI分类标签样式 */
-    .todo-category{
-      font-size:0.75rem;
-      padding:2px 6px;
-      border-radius:4px;
-      background:#00c853;
-      color:white;
+      margin-left:10px;
     }
     .todo-del-btn {
       padding: 4px 8px;
@@ -237,10 +243,6 @@
     }
     body.night-mode .todo-time{
       color:#bbbbbb;
-    }
-    body.night-mode .todo-category{
-      background:#69f0ae;
-      color:#222;
     }
     /* 主视觉区卡片 */
     .hero {
@@ -448,10 +450,10 @@
   </footer>
 
 <script>
-  // ========= 改成你自己Render后端地址 =========
+  // ========= Render后端地址 =========
   const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
 
-  // 时间格式化函数：把 ISO字符串 2026-09-17T15:55:50.374801 转为 2026-09-17 15:55:50
+  // 时间格式化：2026-09-17T15:55:50.374801 -> 2026-09-17 15:55:50
   function formatIsoTime(timeStr) {
     if (!timeStr) return "";
     const date = new Date(timeStr);
@@ -488,7 +490,7 @@
     }
   }
 
-  // 渲染待办，新增AI分类标签
+  // 渲染待办：序号 + 文字 + AI分类标签 + 时间 + 删除按钮
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -505,16 +507,17 @@
       const spanText = document.createElement('span');
       spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
       spanText.textContent = item.content;
+      // AI分类标签
+      const cat = item.category || "其他";
+      const spanCat = document.createElement('span');
+      spanCat.className = 'todo-category cat-' + cat;
+      spanCat.textContent = cat;
       // 创建时间
       const spanTime = document.createElement('span');
       spanTime.className = "todo-time";
       spanTime.textContent = formatIsoTime(item.created_at);
-      // AI分类标签
-      const spanCategory = document.createElement('span');
-      spanCategory.className = "todo-category";
-      spanCategory.textContent = item.category;
 
-      // 点击文字切换完成状态，调用PUT接口
+      // 点击文字切换完成状态
       spanText.addEventListener('click', async () => {
         try{
           await fetch(`${BASE_URL}/todos/${item.id}?is_done=${!item.is_done}`, {
@@ -526,9 +529,10 @@
           alert("更新待办失败");
         }
       })
+
       wrapLeft.appendChild(spanIndex);
       wrapLeft.appendChild(spanText);
-      wrapLeft.appendChild(spanCategory);
+      wrapLeft.appendChild(spanCat);
       wrapLeft.appendChild(spanTime);
 
       // 删除按钮
