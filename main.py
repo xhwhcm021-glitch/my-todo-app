@@ -10,7 +10,6 @@ from sqlalchemy.orm import DeclarativeBase
 
 # ===================== 数据库配置 =====================
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./todo.db")
-# Render postgres 兼容：postgres:// 替换为 postgresql://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -20,16 +19,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
-# Todo表，新增 category 字段
 class Todo(Base):
     __tablename__ = "todos"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String, nullable=False)
     is_done = Column(Boolean, default=False)
-    category = Column(String, default="其他") # AI分类标签
-    created_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=8)) # UTC+8北京时间
+    category = Column(String, default="其他")
+    created_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=8))
 
-# 创建数据表
 Base.metadata.create_all(bind=engine)
 
 # ===================== Pydantic模型 =====================
@@ -46,47 +43,61 @@ class TodoItem(BaseModel):
     class Config:
         orm_mode = True
 
-# ===================== AI分类函数 =====================
+# ===================== 本地关键词兜底分类 =====================
+def local_rule_category(content: str) -> str:
+    text = content or ""
+    if any(k in text for k in ["学", "书", "课", "考试", "复习", "作业", "论文", "实验", "物理", "数学", "英语", "编程", "代码", "医", "化学", "生物", "历史", "考研"]):
+        return "学习"
+    if any(k in text for k in ["工作", "开会", "项目", "任务", "客户", "报告", "会议", "加班", "方案", "汇报"]):
+        return "工作"
+    if any(k in text for k in ["买", "吃", "睡", "玩", "家", "健身", "运动", "购物", "旅行", "打扫", "做饭", "电影", "游戏"]):
+        return "生活"
+    return "其他"
+
+# ===================== AI分类函数（增强版） =====================
 def get_todo_category(content: str) -> str:
     ai_api_key = os.environ.get("AI_API_KEY")
-    # 没有key直接返回其他
-    if not ai_api_key:
-        return "其他"
-    url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {ai_api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "glm-4-flash",
-        "messages": [
-            {
-                "role": "user",
-                "content": f"""请根据下面待办文本，只返回一个分类标签，可选标签：学习、生活、工作、其他。
-只输出标签文字，不要任何多余解释、标点符号。
+    # 有API Key才调AI
+    if ai_api_key:
+        url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {ai_api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "glm-4-flash",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"""请判断下面待办属于哪个分类，只能从这四个里选一个：学习、生活、工作、其他。
+只输出这一个词，不要输出任何标点、引号、解释。
 待办内容：{content}"""
-            }
-        ],
-        "temperature": 0
-    }
-    try:
-        resp = requests.post(url, json=payload, headers=headers, timeout=10)
-        resp.raise_for_status()
-        res_json = resp.json()
-        label = res_json["choices"][0]["message"]["content"].strip()
-        # 校验返回标签，不在列表内就强制改为其他
-        allow_tags = ["学习", "生活", "工作", "其他"]
-        if label not in allow_tags:
-            label = "其他"
-        return label
-    except Exception as e:
-        # AI调用出错，默认返回其他，不阻断待办创建
-        print("AI分类接口调用异常：", e)
-        return "其他"
+                }
+            ],
+            "temperature": 0
+        }
+        try:
+            resp = requests.post(url, json=payload, headers=headers, timeout=10)
+            resp.raise_for_status()
+            res_json = resp.json()
+            raw = res_json["choices"][0]["message"]["content"].strip()
+            # 清洗：去掉引号、括号、标点、空白
+            label = raw.strip(' "\'“”‘’《》【】[]()（）.,，。!！?？:：;；\n\t')
+            # 模糊匹配：返回内容包含某个标签就算命中
+            for tag in ["学习", "生活", "工作", "其他"]:
+                if tag in label or label in tag:
+                    print(f"AI分类成功：{content} -> {tag}")
+                    return tag
+            print(f"AI返回无法识别：{repr(raw)}，使用本地规则")
+        except Exception as e:
+            print("AI分类接口调用异常，使用本地规则：", e)
+    else:
+        print("未配置AI_API_KEY，使用本地规则分类")
+    # AI失败/未配置时，用本地关键词兜底，保证能分类
+    return local_rule_category(content)
 
 # ===================== FastAPI初始化 =====================
 app = FastAPI()
-# CORS跨域，允许所有来源
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -95,7 +106,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 获取数据库会话（依赖注入，正确写法！）
 def get_db():
     db = SessionLocal()
     try:
@@ -108,16 +118,12 @@ def get_db():
 def root():
     return {"message": "我的后端服务器跑路了！"}
 
-# 获取全部待办
 @app.get("/todos", response_model=list[TodoItem])
 def get_all_todos(db: Session = Depends(get_db)):
-    todos = db.query(Todo).all()
-    return todos
+    return db.query(Todo).all()
 
-# 新增待办（自动AI分类）
 @app.post("/todos", response_model=TodoItem)
 def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
-    # AI自动获取分类
     category = get_todo_category(todo.content)
     new_todo = Todo(content=todo.content, category=category)
     db.add(new_todo)
@@ -125,7 +131,6 @@ def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
     db.refresh(new_todo)
     return new_todo
 
-# 修改完成状态
 @app.put("/todos/{todo_id}", response_model=TodoItem)
 def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db)):
     todo = db.query(Todo).filter(Todo.id == todo_id).first()
@@ -136,7 +141,6 @@ def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db)):
     db.refresh(todo)
     return todo
 
-# 删除待办
 @app.delete("/todos/{todo_id}")
 def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     todo = db.query(Todo).filter(Todo.id == todo_id).first()
@@ -146,8 +150,7 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"msg": "删除成功"}
 
-# 本地启动入口
 if __name__ == '__main__':
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
