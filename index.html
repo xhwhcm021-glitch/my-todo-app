@@ -178,6 +178,7 @@
       display:flex;
       align-items:center;
       gap:10px;
+      flex-wrap: wrap;
     }
     .todo-index{
       color:#00c853;
@@ -199,7 +200,14 @@
     .todo-time{
       font-size:0.8rem;
       color:#777;
-      margin-left:10px;
+    }
+    /* AI分类标签样式 */
+    .todo-category{
+      font-size:0.75rem;
+      padding:2px 6px;
+      border-radius:4px;
+      background:#00c853;
+      color:white;
     }
     .todo-del-btn {
       padding: 4px 8px;
@@ -229,6 +237,10 @@
     }
     body.night-mode .todo-time{
       color:#bbbbbb;
+    }
+    body.night-mode .todo-category{
+      background:#69f0ae;
+      color:#222;
     }
     /* 主视觉区卡片 */
     .hero {
@@ -476,7 +488,7 @@
     }
   }
 
-  // 渲染待办，展示后端返回北京时间
+  // 渲染待办，新增AI分类标签
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -493,10 +505,14 @@
       const spanText = document.createElement('span');
       spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
       spanText.textContent = item.content;
-      // 创建时间：调用格式化函数
+      // 创建时间
       const spanTime = document.createElement('span');
       spanTime.className = "todo-time";
       spanTime.textContent = formatIsoTime(item.created_at);
+      // AI分类标签
+      const spanCategory = document.createElement('span');
+      spanCategory.className = "todo-category";
+      spanCategory.textContent = item.category;
 
       // 点击文字切换完成状态，调用PUT接口
       spanText.addEventListener('click', async () => {
@@ -512,6 +528,7 @@
       })
       wrapLeft.appendChild(spanIndex);
       wrapLeft.appendChild(spanText);
+      wrapLeft.appendChild(spanCategory);
       wrapLeft.appendChild(spanTime);
 
       // 删除按钮
