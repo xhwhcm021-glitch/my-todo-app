@@ -491,7 +491,7 @@
     }
   }
 
-  // 渲染待办：序号 + 文字 + 分类标签(灰色圆角) + 时间 + 删除按钮
+  // 渲染待办：序号 + 文字 + AI分类标签(灰色圆角) + 时间 + 删除按钮
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -532,7 +532,7 @@
 
       wrapLeft.appendChild(spanIndex);
       wrapLeft.appendChild(spanText);
-      wrapLeft.appendChild(spanCat);
+      wrapLeft.appendChild(spanCat);   // ← 分类标签，加在文字后面
       wrapLeft.appendChild(spanTime);
 
       // 删除按钮
