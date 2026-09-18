@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的个人主页</title>
+  <title>我的待办事项</title>
   <style>
     * {
       margin: 0;
@@ -15,540 +15,154 @@
       background-color: #ff4520;
       font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
       color: #000000;
-      transition: background-color 0.3s, color 0.3s;
+      padding: 30px 15px;
     }
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-    .container {
-      max-width: 1100px;
+    .wrap {
+      max-width: 600px;
       margin: 0 auto;
-      padding: 0 1rem;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    /* 顶部导航栏 */
-    .navbar {
-      padding: 1.5rem 0;
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 24px;
     }
-    .nav-inner {
+    .input-area {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 20px;
     }
-    .nav-links {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      list-style: none;
+    #todoInput {
       flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
     }
-    .nav-links a {
-      color: #ffffff;
-      font-size: 1.1rem;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-    .nav-links a:hover {
-      opacity: 0.8;
-    }
-    #night-mode-btn {
-      padding: 0.5rem 1rem;
-      border: 2px solid #ffffff;
-      border-radius: 8px;
-      background-color: transparent;
-      color: #ffffff;
-      font-size: 0.95rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.25s, color 0.25s, transform 0.25s, box-shadow 0.25s;
-    }
-    #night-mode-btn:hover {
-      background-color: #ffffff;
-      color: #ff4520;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    #night-mode-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-    /* 夜间模式 统一样式 */
-    body.night-mode {
-      background-color: #2d2d2d;
-      color: #ffffff;
-    }
-    body.night-mode .nav-links a,
-    body.night-mode .section-title,
-    body.night-mode .footer,
-    body.night-mode .hero-right h1,
-    body.night-mode .hero-right h1 a,
-    body.night-mode .hero-right p,
-    body.night-mode .article-card h3,
-    body.night-mode .article-card p {
-      color: #ffffff;
-    }
-    body.night-mode .hero-card,
-    body.night-mode .article-card,
-    body.night-mode .todo-card {
-      background-color: #3d3d3d;
-    }
-    body.night-mode #night-mode-btn {
-      border-color: #ffffff;
-      color: #ffffff;
-    }
-    body.night-mode #night-mode-btn:hover {
-      background-color: #ffffff;
-      color: #2d2d2d;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-    }
-    body.night-mode #night-mode-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-    }
-    /* 待办事项区 */
-    .todo-section {
-      padding-bottom: 1rem;
-    }
-    .todo-card {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: background-color 0.3s;
-    }
-    .todo-title {
-      margin-bottom: 1.5rem;
-      text-align: left;
-    }
-    .todo-form {
-      display: flex;
-      gap: 0.7rem;
-      margin-bottom: 1.5rem;
-    }
-    #todo-input {
-      flex: 1;
-      padding: 0.75rem 1rem;
-      border: 2px solid #eeeeee;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s, background-color 0.3s, color 0.3s;
-    }
-    #todo-input:focus {
-      border-color: #00c853;
-    }
-    #todo-add-btn {
-      padding: 0.75rem 1rem;
+    #addBtn {
+      padding: 10px 18px;
       border: none;
-      border-radius: 10px;
-      background-color: #00c853;
-      color: #ffffff;
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
+      background: #ff4520;
+      color: white;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.2s;
-      white-space: nowrap;
-    }
-    #todo-add-btn:hover {
-      background-color: #00a844;
-      transform: translateY(-2px);
-    }
-    .todo-list {
-      list-style: none;
-      padding-left: 0;
+      font-size:16px;
     }
     .todo-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #333333;
-      font-size: 1rem;
-      line-height: 1.8;
-      margin: 8px 0;
-      flex-wrap: wrap;
-      gap:6px;
-    }
-    .todo-left{
-      display:flex;
-      align-items:center;
+      padding:12px 10px;
+      border-bottom: 1px solid #eee;
       gap:10px;
-    }
-    .todo-index{
-      color:#00c853;
-      font-weight:bold;
+      flex-wrap: wrap;
     }
     .todo-text {
-      cursor: pointer;
-      transition: color 0.2s, opacity 0.2s;
-      word-break: break-all;
+      flex:1;
     }
-    .todo-text:hover {
-      color: #00c853;
-      opacity: 0.8;
-    }
-    .todo-text.finish {
-      text-decoration: line-through;
-      color: #888;
-    }
-    .todo-time{
-      font-size:0.8rem;
-      color:#777;
-      margin-left:10px;
-    }
-    .todo-del-btn {
-      padding: 4px 8px;
-      border: none;
-      border-radius: 6px;
-      background-color: #ff4444;
-      color: #fff;
-      cursor: pointer;
+    .todo-time {
+      font-size:12px;
+      color:#666;
+      margin-right:12px;
       white-space: nowrap;
     }
-    .todo-del-btn:hover {
-      background-color: #dd2222;
-    }
-    body.night-mode #todo-input {
-      background-color: #2d2d2d;
-      border-color: #555555;
-      color: #ffffff;
-    }
-    body.night-mode .todo-item {
-      color: #ffffff;
-    }
-    body.night-mode .todo-text:hover {
-      color: #69f0ae;
-    }
-    body.night-mode .todo-text.finish {
-      color:#aaa;
-    }
-    body.night-mode .todo-time{
-      color:#bbbbbb;
-    }
-    /* 主视觉区卡片 */
-    .hero {
-      display: flex;
-      justify-content: center;
-      padding: 2rem 0 3rem;
-    }
-    .hero-card {
-      display: flex;
-      align-items: center;
-      gap: 3rem;
-      padding: 2.5rem;
-      max-width: 960px;
-      width: 100%;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: background-color 0.3s;
-    }
-    .hero-left {
-      flex-shrink: 0;
-    }
-    .hero-photo {
-      max-width: 320px;
-      width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      display: block;
-    }
-    .hero-right {
-      flex: 1;
-      text-align: left;
-    }
-    .hero-right h1 {
-      color: #00c853;
-      font-size: 3rem;
-      font-weight: 700;
-      line-height: 1.5;
-    }
-    .hero-right h1 a {
-      color: #00c853;
-      text-decoration: underline;
-    }
-    .hero-right h1 a:hover {
-      color: #69f0ae;
-    }
-    .hero-right p {
-      color: #00c632;
-      font-size: 1.25rem;
-      margin-top: 1rem;
-    }
-    /* 最新文章区 */
-    .articles {
-      padding: 1rem 0 4rem;
-    }
-    .section-title {
-      color: #ffffff;
-      font-size: 1.75rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .article-grid {
-      display: flex;
-      gap: 1.5rem;
-    }
-    .article-card {
-      flex: 1;
-      background-color: #ffffff;
-      border-radius: 16px;
-      padding: 1.75rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: transform 0.2s, background-color 0.3s;
-    }
-    .article-card:hover {
-      transform: translateY(5px);
-    }
-    .article-card h3 {
-      color: #00c853;
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
-    }
-    .article-card p {
-      color: #666666;
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-    /* 底部页脚 */
-    .footer {
-      text-align: center;
-      padding: 2rem 0 2.5rem;
-      color: #ffffff;
-      font-size: 0.95rem;
-      opacity: 0.9;
-    }
-    /* ========== 移动端适配（手机屏幕 768px以下）========== */
-    @media screen and (max-width:768px){
-      .container {
-        padding:0 0.8rem;
-      }
-      /* 导航栏 */
-      .nav-inner{
-        flex-direction:column;
-        gap:1rem;
-      }
-      .nav-links{
-        gap:1.5rem;
-      }
-      /* Hero区域：左右布局改成上下 */
-      .hero-card{
-        flex-direction:column;
-        text-align:center;
-        gap:1.5rem;
-        padding:1.5rem;
-      }
-      .hero-right h1{
-        font-size:2rem;
-      }
-      .hero-photo{
-        max-width:240px;
-      }
-      /* 文章卡片横向改成纵向堆叠 */
-      .article-grid{
-        flex-direction:column;
-      }
-      /* 待办表单，小屏幕自适应 */
-      .todo-form{
-        flex-wrap:wrap;
-      }
-      #todo-input{
-        width:100%;
-      }
-      #todo-add-btn{
-        width:100%;
-      }
-      .section-title{
-        font-size:1.4rem;
-      }
+    .del-btn {
+      padding:6px 10px;
+      background:#dc3545;
+      color:#fff;
+      border:none;
+      border-radius:4px;
+      cursor:pointer;
     }
   </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="container">
-      <nav class="nav-inner">
-        <ul class="nav-links">
-          <li><a href="#">首页</a></li>
-          <li><a href="#">关于我们</a></li>
-          <li><a href="#">我的作品</a></li>
-        </ul>
-        <button id="night-mode-btn" type="button">夜间模式</button>
-      </nav>
-    </div>
-  </header>
-  <section class="todo-section">
-    <div class="container">
-      <div class="todo-card">
-        <h2 class="section-title todo-title">待办事项</h2>
-        <div class="todo-form">
-          <input type="text" id="todo-input" placeholder="输入待办内容...">
-          <button id="todo-add-btn" type="button">添加</button>
-        </div>
-        <ul id="todo-list" class="todo-list"></ul>
-      </div>
-    </div>
-  </section>
-  <main>
-    <section class="hero">
-      <div class="container">
-        <div class="hero-card">
-          <div class="hero-left">
-            <img class="hero-photo" src="微信图片_20260130134308_15_2.jpg" alt="个人照片">
-          </div>
-          <div class="hero-right">
-            <h1>你好，这是<a href="https://www.baidu.com" target="_blank">我</a>做的一个网页。</h1>
-            <p>我正在学习全栈开发</p>
-          </div>
-        </div>
-      </div>
-    </section>
-    <section class="articles">
-      <div class="container">
-        <h2 class="section-title">最新文章</h2>
-        <div class="article-grid">
-          <article class="article-card">
-            <h3>我的第一个网页</h3>
-            <p>记录从零开始学习 HTML 和 CSS 的过程，完成了第一个属于自己的网页作品。</p>
-          </article>
-          <article class="article-card">
-            <h3>Flexbox 布局入门</h3>
-            <p>学习了 Flexbox 弹性布局，实现了左右两栏排版和页面垂直居中效果。</p>
-          </article>
-          <article class="article-card">
-            <h3>AI 辅助编程体验</h3>
-            <p>尝试用 AI 工具辅助写代码，大大提高了学习效率和页面美化速度。</p>
-          </article>
-        </div>
-      </div>
-    </section>
-  </main>
-  <footer class="footer">
-    <div class="container">
-      <p>@2026我的个人主页</p>
-    </div>
-  </footer>
+<div class="wrap">
+  <h1>待办事项列表</h1>
+  <div class="input-area">
+    <input type="text" id="todoInput" placeholder="输入待办内容">
+    <button id="addBtn">添加</button>
+  </div>
+  <div id="todoList"></div>
+</div>
 
 <script>
-  // ========= 改成你自己Render后端地址 =========
-  const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+const todoInput = document.querySelector('#todoInput');
+const addBtn = document.querySelector('#addBtn');
+const todoList = document.querySelector('#todoList');
 
-  // 夜间模式切换
-  const nightModeBtn = document.getElementById('night-mode-btn');
-  nightModeBtn.addEventListener('click', function () {
-    document.body.classList.toggle('night-mode');
-  });
+// 时间格式化函数：把 2026-09-17T15:55:50.374801 转为 2026-09-17 15:55:50
+function formatTime(timeStr) {
+  if(!timeStr) return "";
+  const d = new Date(timeStr);
+  const year = d.getFullYear();
+  const month = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  const s = String(d.getSeconds()).padStart(2,'0');
+  return `${year}-${month}-${day} ${h}:${m}:${s}`;
+}
 
-  const todoInput = document.getElementById('todo-input');
-  const todoAddBtn = document.getElementById('todo-add-btn');
-  const todoList = document.getElementById('todo-list');
+// 获取列表
+async function getTodos() {
+  const res = await fetch(`${BASE_URL}/todos`);
+  const data = await res.json();
+  render(data);
+}
 
-  // 从后端获取列表
-  async function getTodos() {
-    try {
-      const res = await fetch(`${BASE_URL}/todos`);
-      if(!res.ok) throw new Error("接口请求失败");
-      const data = await res.json();
-      return data;
-    }catch(err){
-      console.error("获取待办失败：", err);
-      alert("获取待办失败！检查后端是否启动/跨域");
-      return [];
+// 渲染列表
+function render(todos) {
+  todoList.innerHTML = "";
+  todos.forEach(item => {
+    const div = document.createElement('div');
+    div.className = "todo-item";
+    div.innerHTML = `
+      <div class="todo-text">${item.content}</div>
+      <span class="todo-time">${formatTime(item.create_time)}</span>
+      <button class="del-btn" data-id="${item.id}">删除</button>
+    `;
+    todoList.appendChild(div);
+  })
+
+  // 删除事件
+  document.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = async function(){
+      const id = this.dataset.id;
+      await fetch(`${BASE_URL}/todos/${id}`,{method:"DELETE"});
+      getTodos();
     }
-  }
+  })
+}
 
-  // 渲染待办，展示后端返回北京时间
-  async function renderTodos() {
-    todoList.innerHTML = '';
-    const todos = await getTodos();
-    todos.forEach((item, arrIndex) => {
-      const li = document.createElement('li');
-      li.className = 'todo-item';
-      const wrapLeft = document.createElement("div");
-      wrapLeft.className = "todo-left";
-      // 序号
-      const spanIndex = document.createElement('span');
-      spanIndex.className = "todo-index";
-      spanIndex.textContent = `${arrIndex+1}.`;
-      // 待办文字
-      const spanText = document.createElement('span');
-      spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
-      spanText.textContent = item.content;
-      // 创建时间（后端已经+8h，直接展示）
-      const spanTime = document.createElement('span');
-      spanTime.className = "todo-time";
-      spanTime.textContent = item.created_at;
-
-      // 点击文字切换完成状态，调用PUT接口
-      spanText.addEventListener('click', async () => {
-        try{
-          await fetch(`${BASE_URL}/todos/${item.id}?is_done=${!item.is_done}`, {
-            method:"PUT"
-          });
-          renderTodos();
-        }catch(err){
-          console.error("更新失败",err);
-          alert("更新待办失败");
-        }
-      })
-      wrapLeft.appendChild(spanIndex);
-      wrapLeft.appendChild(spanText);
-      wrapLeft.appendChild(spanTime);
-
-      // 删除按钮
-      const delBtn = document.createElement('button');
-      delBtn.className = 'todo-del-btn';
-      delBtn.textContent = '删除';
-      delBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        try{
-          await fetch(`${BASE_URL}/todos/${item.id}`, {method:"DELETE"});
-          renderTodos();
-        }catch(err){
-          console.error("删除失败",err);
-          alert("删除待办失败");
-        }
-      })
-      li.appendChild(wrapLeft);
-      li.appendChild(delBtn);
-      todoList.appendChild(li);
+// 添加待办
+async function addTodo(){
+  const text = todoInput.value.trim();
+  if(!text) return;
+  try{
+    await fetch(`${BASE_URL}/todos`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({content:text})
     })
+    todoInput.value = "";
+    getTodos();
+  }catch(err){
+    alert("添加失败："+err)
   }
+}
 
-  // 添加待办：使用JSON body传递参数，匹配后端TodoCreate模型
-  async function addTodo() {
-    const text = todoInput.value.trim();
-    if (!text) return;
-    try{
-      const res = await fetch(`${BASE_URL}/todos`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ content: text })
-      })
-      if (!res.ok) throw new Error("服务器返回异常");
-      renderTodos();
-      todoInput.value = '';
-    }catch(err){
-      console.error("添加待办失败：", err);
-      alert("添加失败！"+err.message);
-    }
-  }
+addBtn.addEventListener('click', addTodo);
+todoInput.addEventListener('keydown',e=>{
+  if(e.key === "Enter") addTodo();
+})
 
-  todoAddBtn.addEventListener('click', addTodo);
-  todoInput.addEventListener('keydown', function(e){
-    if(e.key === 'Enter') addTodo();
-  });
-
-  // 页面加载渲染
-  renderTodos();
+// 页面加载自动拉取
+getTodos();
 </script>
 </body>
 </html>
