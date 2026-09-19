@@ -25,17 +25,17 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)   # 只存哈希，绝不存明文
+    hashed_password = Column(String, nullable=False)
     todos = relationship("Todo", back_populates="owner")
 
-# ===================== 待办表（关联用户） =====================
+# ===================== 待办表 =====================
 class Todo(Base):
     __tablename__ = "todos"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String, nullable=False)
     is_done = Column(Boolean, default=False)
     category = Column(String, default="其他")
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 外键关联用户
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=8))
     owner = relationship("User", back_populates="todos")
 
@@ -44,7 +44,7 @@ Base.metadata.create_all(bind=engine)
 # ===================== JWT 配置 =====================
 SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-to-a-random-secret")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # token 有效期 1 天
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 天
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -52,8 +52,24 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# ===================== 密码哈希 =====================
+# ===================== 密码哈希（关键修复） =====================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def normalize_password(password: str) -> str:
+    """
+    按字节截断密码到最多 72 字节，满足 bcrypt 限制。
+    注意：不能用 password[:72]（按字符截），中文会超字节。
+    这里按 UTF-8 字节截断，避免 ValueError。
+    """
+    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+def hash_password(password: str) -> str:
+    # 哈希前先截断到 72 字节
+    return pwd_context.hash(normalize_password(password))
+
+def verify_password(password: str, hashed: str) -> bool:
+    # 校验前必须用同样的方式截断，否则永远验证失败
+    return pwd_context.verify(normalize_password(password), hashed)
 
 # ===================== Pydantic 模型 =====================
 class TodoCreate(BaseModel):
@@ -77,7 +93,6 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-# 允许的分类
 ALLOWED_CATEGORIES = ["学习", "工作", "生活", "运动", "其他"]
 
 # ===================== 本地关键词兜底分类 =====================
@@ -150,7 +165,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -162,7 +177,6 @@ def get_db():
     finally:
         db.close()
 
-# 从 Authorization header 解析并校验 JWT，返回当前用户
 def get_current_user(
     authorization: str = Header(None, alias="Authorization"),
     db: Session = Depends(get_db),
@@ -192,29 +206,26 @@ def get_current_user(
 def root():
     return {"message": "我的后端服务器跑路了！"}
 
-# 注册
 @app.post("/register")
 def register(user: UserRegister, db: Session = Depends(get_db)):
     exist = db.query(User).filter(User.username == user.username).first()
     if exist:
         raise HTTPException(status_code=400, detail="用户名已存在")
-    hashed = pwd_context.hash(user.password)   # 哈希加密，不存明文
-    new_user = User(username=user.username, hashed_password=hashed)
+    new_user = User(username=user.username, hashed_password=hash_password(user.password))
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return {"msg": "注册成功", "username": new_user.username}
 
-# 登录，返回 JWT
 @app.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
-    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token = create_access_token({"sub": db_user.username})
     return {"access_token": token, "token_type": "bearer", "username": db_user.username}
 
-# ===================== 待办接口（需登录，仅操作自己的待办） =====================
+# ===================== 待办接口 =====================
 @app.get("/todos", response_model=list[TodoItem])
 def get_all_todos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return db.query(Todo).filter(Todo.user_id == current_user.id).all()
