@@ -1,12 +1,13 @@
 import os
+import jwt
 import requests
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, relationship
 
 # ===================== 数据库配置 =====================
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./todo.db")
@@ -19,17 +20,42 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
+# ===================== 用户表 =====================
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)   # 只存哈希，绝不存明文
+    todos = relationship("Todo", back_populates="owner")
+
+# ===================== 待办表（关联用户） =====================
 class Todo(Base):
     __tablename__ = "todos"
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String, nullable=False)
     is_done = Column(Boolean, default=False)
     category = Column(String, default="其他")
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # 外键关联用户
     created_at = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(hours=8))
+    owner = relationship("User", back_populates="todos")
 
 Base.metadata.create_all(bind=engine)
 
-# ===================== Pydantic模型 =====================
+# ===================== JWT 配置 =====================
+SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-to-a-random-secret")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # token 有效期 1 天
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# ===================== 密码哈希 =====================
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# ===================== Pydantic 模型 =====================
 class TodoCreate(BaseModel):
     content: str
 
@@ -43,10 +69,18 @@ class TodoItem(BaseModel):
     class Config:
         orm_mode = True
 
-# 允许的分类（固定顺序）
+class UserRegister(BaseModel):
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+# 允许的分类
 ALLOWED_CATEGORIES = ["学习", "工作", "生活", "运动", "其他"]
 
-# ===================== 本地关键词兜底分类（含运动） =====================
+# ===================== 本地关键词兜底分类 =====================
 def local_rule_category(content: str) -> str:
     text = content or ""
     if any(k in text for k in ["学", "书", "课", "考试", "复习", "作业", "论文", "实验",
@@ -64,7 +98,7 @@ def local_rule_category(content: str) -> str:
         return "生活"
     return "其他"
 
-# ===================== AI分类函数（优化提示词：Few-shot + 严格约束） =====================
+# ===================== AI 分类函数 =====================
 def get_todo_category(content: str) -> str:
     ai_api_key = os.environ.get("AI_API_KEY")
     if ai_api_key:
@@ -73,12 +107,8 @@ def get_todo_category(content: str) -> str:
             "Authorization": f"Bearer {ai_api_key}",
             "Content-Type": "application/json"
         }
-        # 系统设定 + Few-shot示例（让模型学会分类方式）
         messages = [
-            {
-                "role": "system",
-                "content": "你是一个待办事项分类助手，只负责把待办内容归类到指定分类中。"
-            },
+            {"role": "system", "content": "你是一个待办事项分类助手，只负责把待办内容归类到指定分类中。"},
             {"role": "user", "content": "数学作业"},
             {"role": "assistant", "content": "学习"},
             {"role": "user", "content": "去跑步"},
@@ -87,8 +117,6 @@ def get_todo_category(content: str) -> str:
             {"role": "assistant", "content": "生活"},
             {"role": "user", "content": "开会写周报"},
             {"role": "assistant", "content": "工作"},
-            {"role": "user", "content": "去医院体检"},
-            {"role": "assistant", "content": "生活"},
             {
                 "role": "user",
                 "content": (
@@ -99,19 +127,13 @@ def get_todo_category(content: str) -> str:
                 )
             }
         ]
-        payload = {
-            "model": "glm-4-flash",
-            "messages": messages,
-            "temperature": 0
-        }
+        payload = {"model": "glm-4-flash", "messages": messages, "temperature": 0}
         try:
             resp = requests.post(url, json=payload, headers=headers, timeout=10)
             resp.raise_for_status()
             res_json = resp.json()
             raw = res_json["choices"][0]["message"]["content"].strip()
-            # 清洗：去掉引号、括号、标点、空白
             label = raw.strip(' "\'“”‘’《》【】[]()（）.,，。!！?？:：;；\n\t')
-            # 模糊匹配：返回内容包含某个分类就算命中
             for tag in ALLOWED_CATEGORIES:
                 if tag in label or label in tag:
                     print(f"AI分类成功：{content} -> {tag}")
@@ -121,10 +143,9 @@ def get_todo_category(content: str) -> str:
             print("AI分类接口调用异常，使用本地规则：", e)
     else:
         print("未配置AI_API_KEY，使用本地规则分类")
-    # AI失败/未配置时，本地关键词兜底
     return local_rule_category(content)
 
-# ===================== FastAPI初始化 =====================
+# ===================== FastAPI 初始化 =====================
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -141,27 +162,77 @@ def get_db():
     finally:
         db.close()
 
-# ===================== 接口 =====================
+# 从 Authorization header 解析并校验 JWT，返回当前用户
+def get_current_user(
+    authorization: str = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="无效或过期的凭证，请先登录",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not authorization or not authorization.startswith("Bearer "):
+        raise credentials_exception
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise credentials_exception
+    return user
+
+# ===================== 认证接口 =====================
 @app.get("/")
 def root():
     return {"message": "我的后端服务器跑路了！"}
 
+# 注册
+@app.post("/register")
+def register(user: UserRegister, db: Session = Depends(get_db)):
+    exist = db.query(User).filter(User.username == user.username).first()
+    if exist:
+        raise HTTPException(status_code=400, detail="用户名已存在")
+    hashed = pwd_context.hash(user.password)   # 哈希加密，不存明文
+    new_user = User(username=user.username, hashed_password=hashed)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"msg": "注册成功", "username": new_user.username}
+
+# 登录，返回 JWT
+@app.post("/login")
+def login(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    token = create_access_token({"sub": db_user.username})
+    return {"access_token": token, "token_type": "bearer", "username": db_user.username}
+
+# ===================== 待办接口（需登录，仅操作自己的待办） =====================
 @app.get("/todos", response_model=list[TodoItem])
-def get_all_todos(db: Session = Depends(get_db)):
-    return db.query(Todo).all()
+def get_all_todos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return db.query(Todo).filter(Todo.user_id == current_user.id).all()
 
 @app.post("/todos", response_model=TodoItem)
-def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
+def create_todo(todo: TodoCreate, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
     category = get_todo_category(todo.content)
-    new_todo = Todo(content=todo.content, category=category)
+    new_todo = Todo(content=todo.content, category=category, user_id=current_user.id)
     db.add(new_todo)
     db.commit()
     db.refresh(new_todo)
     return new_todo
 
 @app.put("/todos/{todo_id}", response_model=TodoItem)
-def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db)):
-    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    todo = db.query(Todo).filter(Todo.id == todo_id, Todo.user_id == current_user.id).first()
     if not todo:
         raise HTTPException(status_code=404, detail="待办不存在")
     todo.is_done = is_done
@@ -170,8 +241,9 @@ def update_todo(todo_id: int, is_done: bool, db: Session = Depends(get_db)):
     return todo
 
 @app.delete("/todos/{todo_id}")
-def delete_todo(todo_id: int, db: Session = Depends(get_db)):
-    todo = db.query(Todo).filter(Todo.id == todo_id).first()
+def delete_todo(todo_id: int, db: Session = Depends(get_db),
+                current_user: User = Depends(get_current_user)):
+    todo = db.query(Todo).filter(Todo.id == todo_id, Todo.user_id == current_user.id).first()
     if not todo:
         raise HTTPException(status_code=404, detail="待办不存在")
     db.delete(todo)

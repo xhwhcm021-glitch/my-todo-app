@@ -73,6 +73,29 @@
       transform: translateY(0);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
+    /* 用户栏（登录后显示） */
+    .user-bar {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+      font-weight: 600;
+    }
+    #logout-btn {
+      padding: 0.4rem 0.9rem;
+      border: 2px solid #ffffff;
+      border-radius: 8px;
+      background: transparent;
+      color: #ffffff;
+      font-family: inherit;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    #logout-btn:hover {
+      background: #ffffff;
+      color: #ff4520;
+    }
     /* 夜间模式 统一样式 */
     body.night-mode {
       background-color: #2d2d2d;
@@ -90,7 +113,8 @@
     }
     body.night-mode .hero-card,
     body.night-mode .article-card,
-    body.night-mode .todo-card {
+    body.night-mode .todo-card,
+    body.night-mode .auth-card {
       background-color: #3d3d3d;
     }
     body.night-mode #night-mode-btn {
@@ -107,8 +131,89 @@
       transform: translateY(0);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
     }
+    /* ===== 登录/注册区域 ===== */
+    .auth-section {
+      display: none;
+      padding: 1rem 0;
+    }
+    .auth-card {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 1.8rem;
+      background-color: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: background-color 0.3s;
+    }
+    .auth-title {
+      text-align: center;
+      margin-bottom: 1rem;
+      font-size: 1.4rem;
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 1.2rem;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid #00c853;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 0.6rem;
+      border: none;
+      background: #ffffff;
+      color: #00c853;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .auth-tab.active {
+      background: #00c853;
+      color: #ffffff;
+    }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .auth-form input {
+      padding: 0.7rem 1rem;
+      border: 2px solid #eeeeee;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .auth-form input:focus {
+      border-color: #00c853;
+    }
+    #auth-submit {
+      padding: 0.7rem;
+      border: none;
+      border-radius: 10px;
+      background-color: #00c853;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    #auth-submit:hover {
+      background-color: #00a844;
+    }
+    #auth-msg {
+      text-align: center;
+      color: #e53935;
+      font-size: 0.9rem;
+      min-height: 1.2rem;
+    }
     /* 待办事项区 */
     .todo-section {
+      display: none;
       padding-bottom: 1rem;
     }
     .todo-card {
@@ -197,7 +302,7 @@
       text-decoration: line-through;
       color: #888;
     }
-    /* ===== AI分类标签：灰色背景、圆角 ===== */
+    /* AI分类标签 */
     .todo-category {
       font-size: 0.75rem;
       padding: 2px 10px;
@@ -244,6 +349,11 @@
     body.night-mode .todo-category {
       background-color: #555555;
       color: #dddddd;
+    }
+    body.night-mode .auth-form input {
+      background-color: #2d2d2d;
+      border-color: #555555;
+      color: #ffffff;
     }
     /* 主视觉区卡片 */
     .hero {
@@ -344,7 +454,6 @@
       .container {
         padding:0 0.8rem;
       }
-      /* 导航栏 */
       .nav-inner{
         flex-direction:column;
         gap:1rem;
@@ -352,7 +461,6 @@
       .nav-links{
         gap:1.5rem;
       }
-      /* Hero区域：左右布局改成上下 */
       .hero-card{
         flex-direction:column;
         text-align:center;
@@ -365,11 +473,9 @@
       .hero-photo{
         max-width:240px;
       }
-      /* 文章卡片横向改成纵向堆叠 */
       .article-grid{
         flex-direction:column;
       }
-      /* 待办表单，小屏幕自适应 */
       .todo-form{
         flex-wrap:wrap;
       }
@@ -381,6 +487,9 @@
       }
       .section-title{
         font-size:1.4rem;
+      }
+      .user-bar{
+        flex-direction:column;
       }
     }
   </style>
@@ -394,11 +503,37 @@
           <li><a href="#">关于我们</a></li>
           <li><a href="#">我的作品</a></li>
         </ul>
+        <!-- 登录后显示的用户栏 -->
+        <div class="user-bar" id="userBar">
+          <span id="userName"></span>
+          <button id="logout-btn" type="button">退出登录</button>
+        </div>
         <button id="night-mode-btn" type="button">夜间模式</button>
       </nav>
     </div>
   </header>
-  <section class="todo-section">
+
+  <!-- 登录/注册区域（未登录时显示） -->
+  <section class="auth-section" id="authSection">
+    <div class="container">
+      <div class="auth-card">
+        <h2 class="auth-title">欢迎使用待办事项</h2>
+        <div class="auth-tabs">
+          <button id="loginTab" class="auth-tab active" type="button">登录</button>
+          <button id="registerTab" class="auth-tab" type="button">注册</button>
+        </div>
+        <div class="auth-form">
+          <input type="text" id="auth-username" placeholder="用户名" autocomplete="username">
+          <input type="password" id="auth-password" placeholder="密码" autocomplete="current-password">
+          <button id="auth-submit" type="button">登录</button>
+          <p id="auth-msg"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 待办事项区（登录后显示） -->
+  <section class="todo-section" id="todoSection">
     <div class="container">
       <div class="todo-card">
         <h2 class="section-title todo-title">待办事项</h2>
@@ -410,6 +545,7 @@
       </div>
     </div>
   </section>
+
   <main>
     <section class="hero">
       <div class="container">
@@ -454,7 +590,107 @@
   // ========= Render后端地址 =========
   const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
 
-  // 时间格式化：2026-09-17T15:55:50.374801 -> 2026-09-17 15:55:50
+  // ========= 夜间模式 =========
+  const nightModeBtn = document.getElementById('night-mode-btn');
+  nightModeBtn.addEventListener('click', function () {
+    document.body.classList.toggle('night-mode');
+  });
+
+  // ========= 登录/注册相关元素 =========
+  const authSection = document.getElementById('authSection');
+  const authUsername = document.getElementById('auth-username');
+  const authPassword = document.getElementById('auth-password');
+  const authSubmit = document.getElementById('auth-submit');
+  const authMsg = document.getElementById('auth-msg');
+  const loginTab = document.getElementById('loginTab');
+  const registerTab = document.getElementById('registerTab');
+  const userBar = document.getElementById('userBar');
+  const userName = document.getElementById('userName');
+  const logoutBtn = document.getElementById('logout-btn');
+  const todoSection = document.getElementById('todoSection');
+
+  let authMode = 'login';  // 当前模式：login 或 register
+
+  // 切换登录/注册tab
+  function setAuthMode(mode) {
+    authMode = mode;
+    loginTab.classList.toggle('active', mode === 'login');
+    registerTab.classList.toggle('active', mode === 'register');
+    authSubmit.textContent = mode === 'login' ? '登录' : '注册';
+    authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  }
+  loginTab.addEventListener('click', () => setAuthMode('login'));
+  registerTab.addEventListener('click', () => setAuthMode('register'));
+
+  // 登录/注册提交
+  async function handleAuth() {
+    const username = authUsername.value.trim();
+    const password = authPassword.value.trim();
+    if (!username || !password) {
+      authMsg.textContent = '请输入用户名和密码';
+      return;
+    }
+    const url = authMode === 'login' ? '/login' : '/register';
+    try {
+      const res = await fetch(`${BASE_URL}${url}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        authMsg.textContent = data.detail || '请求失败';
+        return;
+      }
+      if (authMode === 'login') {
+        // 登录成功，保存 token 到 localStorage
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('username', data.username);
+        authMsg.textContent = '';
+        authPassword.value = '';
+        showAuth();
+      } else {
+        // 注册成功，自动切到登录
+        authMsg.textContent = '注册成功，请登录';
+        setAuthMode('login');
+      }
+    } catch (err) {
+      authMsg.textContent = '网络错误，请稍后重试';
+      console.error(err);
+    }
+  }
+  authSubmit.addEventListener('click', handleAuth);
+  authPassword.addEventListener('keydown', e => { if (e.key === 'Enter') handleAuth(); });
+
+  // 退出登录
+  logoutBtn.addEventListener('click', function () {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    showAuth();
+  });
+
+  // ========= 根据登录状态显示/隐藏 =========
+  function showAuth() {
+    const token = localStorage.getItem('token');
+    if (token) {
+      authSection.style.display = 'none';
+      userBar.style.display = 'flex';
+      userName.textContent = localStorage.getItem('username') || '';
+      todoSection.style.display = 'block';
+      renderTodos();
+    } else {
+      authSection.style.display = 'block';
+      userBar.style.display = 'none';
+      todoSection.style.display = 'none';
+    }
+  }
+
+  // ========= 构造带 token 的请求头 =========
+  function authHeaders() {
+    return { "Authorization": "Bearer " + (localStorage.getItem('token') || '') };
+  }
+
+  // ========= 时间格式化 =========
   function formatIsoTime(timeStr) {
     if (!timeStr) return "";
     const date = new Date(timeStr);
@@ -467,31 +703,32 @@
     return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
   }
 
-  // 夜间模式切换
-  const nightModeBtn = document.getElementById('night-mode-btn');
-  nightModeBtn.addEventListener('click', function () {
-    document.body.classList.toggle('night-mode');
-  });
-
+  // ========= 待办相关元素 =========
   const todoInput = document.getElementById('todo-input');
   const todoAddBtn = document.getElementById('todo-add-btn');
   const todoList = document.getElementById('todo-list');
 
-  // 从后端获取列表
+  // 获取列表（带 token）
   async function getTodos() {
     try {
-      const res = await fetch(`${BASE_URL}/todos`);
-      if(!res.ok) throw new Error("接口请求失败");
-      const data = await res.json();
-      return data;
-    }catch(err){
+      const res = await fetch(`${BASE_URL}/todos`, { headers: authHeaders() });
+      if (res.status === 401) {
+        // token 失效，强制重新登录
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        showAuth();
+        return [];
+      }
+      if (!res.ok) throw new Error("接口请求失败");
+      return await res.json();
+    } catch (err) {
       console.error("获取待办失败：", err);
-      alert("获取待办失败！检查后端是否启动/跨域");
+      alert("获取待办失败！");
       return [];
     }
   }
 
-  // 渲染待办：序号 + 文字 + AI分类标签(灰色圆角) + 时间 + 删除按钮
+  // 渲染待办
   async function renderTodos() {
     todoList.innerHTML = '';
     const todos = await getTodos();
@@ -500,89 +737,88 @@
       li.className = 'todo-item';
       const wrapLeft = document.createElement("div");
       wrapLeft.className = "todo-left";
-      // 序号
       const spanIndex = document.createElement('span');
       spanIndex.className = "todo-index";
       spanIndex.textContent = `${arrIndex+1}.`;
-      // 待办文字
       const spanText = document.createElement('span');
       spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
       spanText.textContent = item.content;
-      // AI分类标签（灰色圆角小标签）
       const spanCat = document.createElement('span');
       spanCat.className = 'todo-category';
       spanCat.textContent = item.category || "其他";
-      // 创建时间
       const spanTime = document.createElement('span');
       spanTime.className = "todo-time";
       spanTime.textContent = formatIsoTime(item.created_at);
 
       // 点击文字切换完成状态
       spanText.addEventListener('click', async () => {
-        try{
+        try {
           await fetch(`${BASE_URL}/todos/${item.id}?is_done=${!item.is_done}`, {
-            method:"PUT"
+            method: "PUT",
+            headers: authHeaders()
           });
           renderTodos();
-        }catch(err){
-          console.error("更新失败",err);
+        } catch (err) {
+          console.error("更新失败", err);
           alert("更新待办失败");
         }
-      })
+      });
 
       wrapLeft.appendChild(spanIndex);
       wrapLeft.appendChild(spanText);
-      wrapLeft.appendChild(spanCat);   // ← 分类标签，加在文字后面
+      wrapLeft.appendChild(spanCat);
       wrapLeft.appendChild(spanTime);
 
-      // 删除按钮
       const delBtn = document.createElement('button');
       delBtn.className = 'todo-del-btn';
       delBtn.textContent = '删除';
       delBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        try{
-          await fetch(`${BASE_URL}/todos/${item.id}`, {method:"DELETE"});
+        try {
+          await fetch(`${BASE_URL}/todos/${item.id}`, {
+            method: "DELETE",
+            headers: authHeaders()
+          });
           renderTodos();
-        }catch(err){
-          console.error("删除失败",err);
+        } catch (err) {
+          console.error("删除失败", err);
           alert("删除待办失败");
         }
-      })
+      });
       li.appendChild(wrapLeft);
       li.appendChild(delBtn);
       todoList.appendChild(li);
-    })
+    });
   }
 
-  // 添加待办：使用JSON body传递参数，匹配后端TodoCreate模型
+  // 添加待办（带 token）
   async function addTodo() {
     const text = todoInput.value.trim();
     if (!text) return;
-    try{
+    try {
       const res = await fetch(`${BASE_URL}/todos`, {
         method: "POST",
         headers: {
+          ...authHeaders(),
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ content: text })
-      })
+      });
       if (!res.ok) throw new Error("服务器返回异常");
       renderTodos();
       todoInput.value = '';
-    }catch(err){
+    } catch (err) {
       console.error("添加待办失败：", err);
-      alert("添加失败！"+err.message);
+      alert("添加失败！" + err.message);
     }
   }
-
   todoAddBtn.addEventListener('click', addTodo);
-  todoInput.addEventListener('keydown', function(e){
-    if(e.key === 'Enter') addTodo();
+  todoInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') addTodo();
   });
 
-  // 页面加载渲染
-  renderTodos();
+  // 页面加载，检查登录状态
+  showAuth();
 </script>
 </body>
 </html>
