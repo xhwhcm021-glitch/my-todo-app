@@ -43,37 +43,65 @@ class TodoItem(BaseModel):
     class Config:
         orm_mode = True
 
-# ===================== 本地关键词兜底分类 =====================
+# 允许的分类（固定顺序）
+ALLOWED_CATEGORIES = ["学习", "工作", "生活", "运动", "其他"]
+
+# ===================== 本地关键词兜底分类（含运动） =====================
 def local_rule_category(content: str) -> str:
     text = content or ""
-    if any(k in text for k in ["学", "书", "课", "考试", "复习", "作业", "论文", "实验", "物理", "数学", "英语", "编程", "代码", "医", "化学", "生物", "历史", "考研"]):
+    if any(k in text for k in ["学", "书", "课", "考试", "复习", "作业", "论文", "实验",
+                               "物理", "数学", "英语", "编程", "代码", "医", "化学",
+                               "生物", "历史", "考研", "读书"]):
         return "学习"
-    if any(k in text for k in ["工作", "开会", "项目", "任务", "客户", "报告", "会议", "加班", "方案", "汇报"]):
+    if any(k in text for k in ["跑步", "健身", "运动", "锻炼", "打球", "游泳", "瑜伽",
+                               "散步", "骑行", "篮球", "足球", "羽毛球"]):
+        return "运动"
+    if any(k in text for k in ["工作", "开会", "项目", "任务", "客户", "报告", "会议",
+                               "加班", "方案", "汇报", "邮件", "面试"]):
         return "工作"
-    if any(k in text for k in ["买", "吃", "睡", "玩", "家", "健身", "运动", "购物", "旅行", "打扫", "做饭", "电影", "游戏"]):
+    if any(k in text for k in ["买", "吃", "睡", "玩", "家", "购物", "旅行", "打扫",
+                               "做饭", "电影", "游戏", "牛奶", "蔬菜"]):
         return "生活"
     return "其他"
 
-# ===================== AI分类函数（增强版） =====================
+# ===================== AI分类函数（优化提示词：Few-shot + 严格约束） =====================
 def get_todo_category(content: str) -> str:
     ai_api_key = os.environ.get("AI_API_KEY")
-    # 有API Key才调AI
     if ai_api_key:
         url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
         headers = {
             "Authorization": f"Bearer {ai_api_key}",
             "Content-Type": "application/json"
         }
+        # 系统设定 + Few-shot示例（让模型学会分类方式）
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一个待办事项分类助手，只负责把待办内容归类到指定分类中。"
+            },
+            {"role": "user", "content": "数学作业"},
+            {"role": "assistant", "content": "学习"},
+            {"role": "user", "content": "去跑步"},
+            {"role": "assistant", "content": "运动"},
+            {"role": "user", "content": "买牛奶"},
+            {"role": "assistant", "content": "生活"},
+            {"role": "user", "content": "开会写周报"},
+            {"role": "assistant", "content": "工作"},
+            {"role": "user", "content": "去医院体检"},
+            {"role": "assistant", "content": "生活"},
+            {
+                "role": "user",
+                "content": (
+                    "请对下面这条待办进行分类。分类只能从以下5个中选一个："
+                    "【学习、工作、生活、运动、其他】。"
+                    "你必须只输出这一个分类词本身，不要输出任何标点符号、引号、"
+                    "解释或多余内容。\n待办内容：" + content
+                )
+            }
+        ]
         payload = {
             "model": "glm-4-flash",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"""请判断下面待办属于哪个分类，只能从这四个里选一个：学习、生活、工作、其他。
-只输出这一个词，不要输出任何标点、引号、解释。
-待办内容：{content}"""
-                }
-            ],
+            "messages": messages,
             "temperature": 0
         }
         try:
@@ -83,8 +111,8 @@ def get_todo_category(content: str) -> str:
             raw = res_json["choices"][0]["message"]["content"].strip()
             # 清洗：去掉引号、括号、标点、空白
             label = raw.strip(' "\'“”‘’《》【】[]()（）.,，。!！?？:：;；\n\t')
-            # 模糊匹配：返回内容包含某个标签就算命中
-            for tag in ["学习", "生活", "工作", "其他"]:
+            # 模糊匹配：返回内容包含某个分类就算命中
+            for tag in ALLOWED_CATEGORIES:
                 if tag in label or label in tag:
                     print(f"AI分类成功：{content} -> {tag}")
                     return tag
@@ -93,7 +121,7 @@ def get_todo_category(content: str) -> str:
             print("AI分类接口调用异常，使用本地规则：", e)
     else:
         print("未配置AI_API_KEY，使用本地规则分类")
-    # AI失败/未配置时，用本地关键词兜底，保证能分类
+    # AI失败/未配置时，本地关键词兜底
     return local_rule_category(content)
 
 # ===================== FastAPI初始化 =====================
