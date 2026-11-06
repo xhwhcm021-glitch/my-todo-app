@@ -1,824 +1,176 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的个人主页</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      min-height: 100vh;
-      background-color: #ff4520;
-      font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-      color: #000000;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
-    /* 顶部导航栏 */
-    .navbar {
-      padding: 1.5rem 0;
-    }
-    .nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .nav-links {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      list-style: none;
-      flex: 1;
-    }
-    .nav-links a {
-      color: #ffffff;
-      font-size: 1.1rem;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-    .nav-links a:hover {
-      opacity: 0.8;
-    }
-    #night-mode-btn {
-      padding: 0.5rem 1rem;
-      border: 2px solid #ffffff;
-      border-radius: 8px;
-      background-color: transparent;
-      color: #ffffff;
-      font-size: 0.95rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.25s, color 0.25s, transform 0.25s, box-shadow 0.25s;
-    }
-    #night-mode-btn:hover {
-      background-color: #ffffff;
-      color: #ff4520;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    }
-    #night-mode-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-    /* 用户栏（登录后显示） */
-    .user-bar {
-      display: none;
-      align-items: center;
-      gap: 12px;
-      color: #ffffff;
-      font-weight: 600;
-    }
-    #logout-btn {
-      padding: 0.4rem 0.9rem;
-      border: 2px solid #ffffff;
-      border-radius: 8px;
-      background: transparent;
-      color: #ffffff;
-      font-family: inherit;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s, color 0.2s;
-    }
-    #logout-btn:hover {
-      background: #ffffff;
-      color: #ff4520;
-    }
-    /* 夜间模式 统一样式 */
-    body.night-mode {
-      background-color: #2d2d2d;
-      color: #ffffff;
-    }
-    body.night-mode .nav-links a,
-    body.night-mode .section-title,
-    body.night-mode .footer,
-    body.night-mode .hero-right h1,
-    body.night-mode .hero-right h1 a,
-    body.night-mode .hero-right p,
-    body.night-mode .article-card h3,
-    body.night-mode .article-card p {
-      color: #ffffff;
-    }
-    body.night-mode .hero-card,
-    body.night-mode .article-card,
-    body.night-mode .todo-card,
-    body.night-mode .auth-card {
-      background-color: #3d3d3d;
-    }
-    body.night-mode #night-mode-btn {
-      border-color: #ffffff;
-      color: #ffffff;
-    }
-    body.night-mode #night-mode-btn:hover {
-      background-color: #ffffff;
-      color: #2d2d2d;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-    }
-    body.night-mode #night-mode-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-    }
-    /* ===== 登录/注册区域 ===== */
-    .auth-section {
-      display: none;
-      padding: 1rem 0;
-    }
-    .auth-card {
-      max-width: 440px;
-      margin: 0 auto;
-      padding: 1.8rem;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: background-color 0.3s;
-    }
-    .auth-title {
-      text-align: center;
-      margin-bottom: 1rem;
-      font-size: 1.4rem;
-    }
-    .auth-tabs {
-      display: flex;
-      margin-bottom: 1.2rem;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 2px solid #00c853;
-    }
-    .auth-tab {
-      flex: 1;
-      padding: 0.6rem;
-      border: none;
-      background: #ffffff;
-      color: #00c853;
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.2s, color 0.2s;
-    }
-    .auth-tab.active {
-      background: #00c853;
-      color: #ffffff;
-    }
-    .auth-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-    }
-    .auth-form input {
-      padding: 0.7rem 1rem;
-      border: 2px solid #eeeeee;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .auth-form input:focus {
-      border-color: #00c853;
-    }
-    #auth-submit {
-      padding: 0.7rem;
-      border: none;
-      border-radius: 10px;
-      background-color: #00c853;
-      color: #ffffff;
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    #auth-submit:hover {
-      background-color: #00a844;
-    }
-    #auth-msg {
-      text-align: center;
-      color: #e53935;
-      font-size: 0.9rem;
-      min-height: 1.2rem;
-    }
-    /* 待办事项区 */
-    .todo-section {
-      display: none;
-      padding-bottom: 1rem;
-    }
-    .todo-card {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 1.5rem;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: background-color 0.3s;
-    }
-    .todo-title {
-      margin-bottom: 1.5rem;
-      text-align: left;
-    }
-    .todo-form {
-      display: flex;
-      gap: 0.7rem;
-      margin-bottom: 1.5rem;
-    }
-    #todo-input {
-      flex: 1;
-      padding: 0.75rem 1rem;
-      border: 2px solid #eeeeee;
-      border-radius: 10px;
-      font-size: 1rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s, background-color 0.3s, color 0.3s;
-    }
-    #todo-input:focus {
-      border-color: #00c853;
-    }
-    #todo-add-btn {
-      padding: 0.75rem 1rem;
-      border: none;
-      border-radius: 10px;
-      background-color: #00c853;
-      color: #ffffff;
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background-color 0.2s, transform 0.2s;
-      white-space: nowrap;
-    }
-    #todo-add-btn:hover {
-      background-color: #00a844;
-      transform: translateY(-2px);
-    }
-    .todo-list {
-      list-style: none;
-      padding-left: 0;
-    }
-    .todo-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: #333333;
-      font-size: 1rem;
-      line-height: 1.8;
-      margin: 8px 0;
-      flex-wrap: wrap;
-      gap:6px;
-    }
-    .todo-left{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .todo-index{
-      color:#00c853;
-      font-weight:bold;
-    }
-    .todo-text {
-      cursor: pointer;
-      transition: color 0.2s, opacity 0.2s;
-      word-break: break-all;
-    }
-    .todo-text:hover {
-      color: #00c853;
-      opacity: 0.8;
-    }
-    .todo-text.finish {
-      text-decoration: line-through;
-      color: #888;
-    }
-    /* AI分类标签 */
-    .todo-category {
-      font-size: 0.75rem;
-      padding: 2px 10px;
-      border-radius: 12px;
-      background-color: #e0e0e0;
-      color: #555555;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .todo-time{
-      font-size:0.8rem;
-      color:#777;
-      margin-left:10px;
-    }
-    .todo-del-btn {
-      padding: 4px 8px;
-      border: none;
-      border-radius: 6px;
-      background-color: #ff4444;
-      color: #fff;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .todo-del-btn:hover {
-      background-color: #dd2222;
-    }
-    body.night-mode #todo-input {
-      background-color: #2d2d2d;
-      border-color: #555555;
-      color: #ffffff;
-    }
-    body.night-mode .todo-item {
-      color: #ffffff;
-    }
-    body.night-mode .todo-text:hover {
-      color: #69f0ae;
-    }
-    body.night-mode .todo-text.finish {
-      color:#aaa;
-    }
-    body.night-mode .todo-time{
-      color:#bbbbbb;
-    }
-    body.night-mode .todo-category {
-      background-color: #555555;
-      color: #dddddd;
-    }
-    body.night-mode .auth-form input {
-      background-color: #2d2d2d;
-      border-color: #555555;
-      color: #ffffff;
-    }
-    /* 主视觉区卡片 */
-    .hero {
-      display: flex;
-      justify-content: center;
-      padding: 2rem 0 3rem;
-    }
-    .hero-card {
-      display: flex;
-      align-items: center;
-      gap: 3rem;
-      padding: 2.5rem;
-      max-width: 960px;
-      width: 100%;
-      background-color: #ffffff;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: background-color 0.3s;
-    }
-    .hero-left {
-      flex-shrink: 0;
-    }
-    .hero-photo {
-      max-width: 320px;
-      width: 100%;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      display: block;
-    }
-    .hero-right {
-      flex: 1;
-      text-align: left;
-    }
-    .hero-right h1 {
-      color: #00c853;
-      font-size: 3rem;
-      font-weight: 700;
-      line-height: 1.5;
-    }
-    .hero-right h1 a {
-      color: #00c853;
-      text-decoration: underline;
-    }
-    .hero-right h1 a:hover {
-      color: #69f0ae;
-    }
-    .hero-right p {
-      color: #00c632;
-      font-size: 1.25rem;
-      margin-top: 1rem;
-    }
-    /* 最新文章区 */
-    .articles {
-      padding: 1rem 0 4rem;
-    }
-    .section-title {
-      color: #ffffff;
-      font-size: 1.75rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .article-grid {
-      display: flex;
-      gap: 1.5rem;
-    }
-    .article-card {
-      flex: 1;
-      background-color: #ffffff;
-      border-radius: 16px;
-      padding: 1.75rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: transform 0.2s, background-color 0.3s;
-    }
-    .article-card:hover {
-      transform: translateY(5px);
-    }
-    .article-card h3 {
-      color: #00c853;
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
-    }
-    .article-card p {
-      color: #666666;
-      font-size: 0.95rem;
-      line-height: 1.6;
-    }
-    /* 底部页脚 */
-    .footer {
-      text-align: center;
-      padding: 2rem 0 2.5rem;
-      color: #ffffff;
-      font-size: 0.95rem;
-      opacity: 0.9;
-    }
-    /* ========== 移动端适配（手机屏幕 768px以下）========== */
-    @media screen and (max-width:768px){
-      .container {
-        padding:0 0.8rem;
-      }
-      .nav-inner{
-        flex-direction:column;
-        gap:1rem;
-      }
-      .nav-links{
-        gap:1.5rem;
-      }
-      .hero-card{
-        flex-direction:column;
-        text-align:center;
-        gap:1.5rem;
-        padding:1.5rem;
-      }
-      .hero-right h1{
-        font-size:2rem;
-      }
-      .hero-photo{
-        max-width:240px;
-      }
-      .article-grid{
-        flex-direction:column;
-      }
-      .todo-form{
-        flex-wrap:wrap;
-      }
-      #todo-input{
-        width:100%;
-      }
-      #todo-add-btn{
-        width:100%;
-      }
-      .section-title{
-        font-size:1.4rem;
-      }
-      .user-bar{
-        flex-direction:column;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店员订货录入系统</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .qty-input { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-submit { display: block; width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .btn-submit:hover { background: #0056b3; }
+        .msg { text-align: center; margin-top: 15px; font-weight: bold; }
+        .msg.error { color: red; }
+        .msg.success { color: green; }
+    </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="container">
-      <nav class="nav-inner">
-        <ul class="nav-links">
-          <li><a href="#">首页</a></li>
-          <li><a href="#">关于我们</a></li>
-          <li><a href="#">我的作品</a></li>
-        </ul>
-        <!-- 登录后显示的用户栏 -->
-        <div class="user-bar" id="userBar">
-          <span id="userName"></span>
-          <button id="logout-btn" type="button">退出登录</button>
-        </div>
-        <button id="night-mode-btn" type="button">夜间模式</button>
-      </nav>
-    </div>
-  </header>
 
-  <!-- 登录/注册区域（未登录时显示） -->
-  <section class="auth-section" id="authSection">
-    <div class="container">
-      <div class="auth-card">
-        <h2 class="auth-title">欢迎使用待办事项</h2>
-        <div class="auth-tabs">
-          <button id="loginTab" class="auth-tab active" type="button">登录</button>
-          <button id="registerTab" class="auth-tab" type="button">注册</button>
-        </div>
-        <div class="auth-form">
-          <input type="text" id="auth-username" placeholder="用户名" autocomplete="username">
-          <input type="password" id="auth-password" placeholder="密码" autocomplete="current-password">
-          <button id="auth-submit" type="button">登录</button>
-          <p id="auth-msg"></p>
-        </div>
-      </div>
+<div class="container">
+    <h2>商品订货录入</h2>
+    
+    <!-- 假设你在 localStorage 里存了 JWT Token，这里先放个输入框方便测试 -->
+    <div style="margin-bottom: 15px; padding: 10px; background: #fff3cd;">
+        <label>JWT Token (测试用): </label>
+        <input type="text" id="tokenInput" style="width: 70%; padding: 5px;" placeholder="粘贴你的 Bearer Token">
     </div>
-  </section>
 
-  <!-- 待办事项区（登录后显示） -->
-  <section class="todo-section" id="todoSection">
-    <div class="container">
-      <div class="todo-card">
-        <h2 class="section-title todo-title">待办事项</h2>
-        <div class="todo-form">
-          <input type="text" id="todo-input" placeholder="输入待办内容...">
-          <button id="todo-add-btn" type="button">添加</button>
-        </div>
-        <ul id="todo-list" class="todo-list"></ul>
-      </div>
-    </div>
-  </section>
+    <table id="productTable">
+        <thead>
+            <tr>
+                <th>商品名称</th>
+                <th>单位</th>
+                <th>订货数量</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- JS 动态渲染 -->
+            <tr><td colspan="3" style="text-align: center;">加载中...</td></tr>
+        </tbody>
+    </table>
 
-  <main>
-    <section class="hero">
-      <div class="container">
-        <div class="hero-card">
-          <div class="hero-left">
-            <img class="hero-photo" src="微信图片_20260130134308_15_2.jpg" alt="个人照片">
-          </div>
-          <div class="hero-right">
-            <h1>你好，这是<a href="https://www.baidu.com" target="_blank">我</a>做的一个网页。</h1>
-            <p>我正在学习全栈开发</p>
-          </div>
-        </div>
-      </div>
-    </section>
-    <section class="articles">
-      <div class="container">
-        <h2 class="section-title">最新文章</h2>
-        <div class="article-grid">
-          <article class="article-card">
-            <h3>我的第一个网页</h3>
-            <p>记录从零开始学习 HTML 和 CSS 的过程，完成了第一个属于自己的网页作品。</p>
-          </article>
-          <article class="article-card">
-            <h3>Flexbox 布局入门</h3>
-            <p>学习了 Flexbox 弹性布局，实现了左右两栏排版和页面垂直居中效果。</p>
-          </article>
-          <article class="article-card">
-            <h3>AI 辅助编程体验</h3>
-            <p>尝试用 AI 工具辅助写代码，大大提高了学习效率和页面美化速度。</p>
-          </article>
-        </div>
-      </div>
-    </section>
-  </main>
-  <footer class="footer">
-    <div class="container">
-      <p>@2026我的个人主页</p>
-    </div>
-  </footer>
+    <button class="btn-submit" onclick="submitOrders()">提交订单</button>
+    <div id="message" class="msg"></div>
+</div>
 
 <script>
-  // ========= Render后端地址 =========
-  const BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+    // ⚠️ 换成你真实的 Render 后端地址
+    const API_BASE_URL = "https://my-todo-app-xxxx.onrender.com"; 
 
-  // ========= 夜间模式 =========
-  const nightModeBtn = document.getElementById('night-mode-btn');
-  nightModeBtn.addEventListener('click', function () {
-    document.body.classList.toggle('night-mode');
-  });
-
-  // ========= 登录/注册相关元素 =========
-  const authSection = document.getElementById('authSection');
-  const authUsername = document.getElementById('auth-username');
-  const authPassword = document.getElementById('auth-password');
-  const authSubmit = document.getElementById('auth-submit');
-  const authMsg = document.getElementById('auth-msg');
-  const loginTab = document.getElementById('loginTab');
-  const registerTab = document.getElementById('registerTab');
-  const userBar = document.getElementById('userBar');
-  const userName = document.getElementById('userName');
-  const logoutBtn = document.getElementById('logout-btn');
-  const todoSection = document.getElementById('todoSection');
-
-  let authMode = 'login';  // 当前模式：login 或 register
-
-  // 切换登录/注册tab
-  function setAuthMode(mode) {
-    authMode = mode;
-    loginTab.classList.toggle('active', mode === 'login');
-    registerTab.classList.toggle('active', mode === 'register');
-    authSubmit.textContent = mode === 'login' ? '登录' : '注册';
-    authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-  }
-  loginTab.addEventListener('click', () => setAuthMode('login'));
-  registerTab.addEventListener('click', () => setAuthMode('register'));
-
-  // 登录/注册提交
-  async function handleAuth() {
-    const username = authUsername.value.trim();
-    const password = authPassword.value.trim();
-    if (!username || !password) {
-      authMsg.textContent = '请输入用户名和密码';
-      return;
-    }
-    const url = authMode === 'login' ? '/login' : '/register';
-    try {
-      const res = await fetch(`${BASE_URL}${url}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        authMsg.textContent = data.detail || '请求失败';
-        return;
-      }
-      if (authMode === 'login') {
-        // 登录成功，保存 token 到 localStorage
-        localStorage.setItem('token', data.access_token);
-        localStorage.setItem('username', data.username);
-        authMsg.textContent = '';
-        authPassword.value = '';
-        showAuth();
-      } else {
-        // 注册成功，自动切到登录
-        authMsg.textContent = '注册成功，请登录';
-        setAuthMode('login');
-      }
-    } catch (err) {
-      authMsg.textContent = '网络错误，请稍后重试';
-      console.error(err);
-    }
-  }
-  authSubmit.addEventListener('click', handleAuth);
-  authPassword.addEventListener('keydown', e => { if (e.key === 'Enter') handleAuth(); });
-
-  // 退出登录
-  logoutBtn.addEventListener('click', function () {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    showAuth();
-  });
-
-  // ========= 根据登录状态显示/隐藏 =========
-  function showAuth() {
-    const token = localStorage.getItem('token');
-    if (token) {
-      authSection.style.display = 'none';
-      userBar.style.display = 'flex';
-      userName.textContent = localStorage.getItem('username') || '';
-      todoSection.style.display = 'block';
-      renderTodos();
-    } else {
-      authSection.style.display = 'block';
-      userBar.style.display = 'none';
-      todoSection.style.display = 'none';
-    }
-  }
-
-  // ========= 构造带 token 的请求头 =========
-  function authHeaders() {
-    return { "Authorization": "Bearer " + (localStorage.getItem('token') || '') };
-  }
-
-  // ========= 时间格式化 =========
-  function formatIsoTime(timeStr) {
-    if (!timeStr) return "";
-    const date = new Date(timeStr);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
-    const second = String(date.getSeconds()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
-  }
-
-  // ========= 待办相关元素 =========
-  const todoInput = document.getElementById('todo-input');
-  const todoAddBtn = document.getElementById('todo-add-btn');
-  const todoList = document.getElementById('todo-list');
-
-  // 获取列表（带 token）
-  async function getTodos() {
-    try {
-      const res = await fetch(`${BASE_URL}/todos`, { headers: authHeaders() });
-      if (res.status === 401) {
-        // token 失效，强制重新登录
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        showAuth();
-        return [];
-      }
-      if (!res.ok) throw new Error("接口请求失败");
-      return await res.json();
-    } catch (err) {
-      console.error("获取待办失败：", err);
-      alert("获取待办失败！");
-      return [];
-    }
-  }
-
-  // 渲染待办
-  async function renderTodos() {
-    todoList.innerHTML = '';
-    const todos = await getTodos();
-    todos.forEach((item, arrIndex) => {
-      const li = document.createElement('li');
-      li.className = 'todo-item';
-      const wrapLeft = document.createElement("div");
-      wrapLeft.className = "todo-left";
-      const spanIndex = document.createElement('span');
-      spanIndex.className = "todo-index";
-      spanIndex.textContent = `${arrIndex+1}.`;
-      const spanText = document.createElement('span');
-      spanText.className = 'todo-text' + (item.is_done ? ' finish' : '');
-      spanText.textContent = item.content;
-      const spanCat = document.createElement('span');
-      spanCat.className = 'todo-category';
-      spanCat.textContent = item.category || "其他";
-      const spanTime = document.createElement('span');
-      spanTime.className = "todo-time";
-      spanTime.textContent = formatIsoTime(item.created_at);
-
-      // 点击文字切换完成状态
-      spanText.addEventListener('click', async () => {
-        try {
-          await fetch(`${BASE_URL}/todos/${item.id}?is_done=${!item.is_done}`, {
-            method: "PUT",
-            headers: authHeaders()
-          });
-          renderTodos();
-        } catch (err) {
-          console.error("更新失败", err);
-          alert("更新待办失败");
-        }
-      });
-
-      wrapLeft.appendChild(spanIndex);
-      wrapLeft.appendChild(spanText);
-      wrapLeft.appendChild(spanCat);
-      wrapLeft.appendChild(spanTime);
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'todo-del-btn';
-      delBtn.textContent = '删除';
-      delBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        try {
-          await fetch(`${BASE_URL}/todos/${item.id}`, {
-            method: "DELETE",
-            headers: authHeaders()
-          });
-          renderTodos();
-        } catch (err) {
-          console.error("删除失败", err);
-          alert("删除待办失败");
-        }
-      });
-      li.appendChild(wrapLeft);
-      li.appendChild(delBtn);
-      todoList.appendChild(li);
+    // 页面加载时拉取商品列表
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchProducts();
     });
-  }
 
-  // 添加待办（带 token）
-  async function addTodo() {
-    const text = todoInput.value.trim();
-    if (!text) return;
-    try {
-      const res = await fetch(`${BASE_URL}/todos`, {
-        method: "POST",
-        headers: {
-          ...authHeaders(),
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ content: text })
-      });
-      if (!res.ok) throw new Error("服务器返回异常");
-      renderTodos();
-      todoInput.value = '';
-    } catch (err) {
-      console.error("添加待办失败：", err);
-      alert("添加失败！" + err.message);
+    // 获取 Token（测试时可以直接在这里写死）
+    function getToken() {
+        return document.getElementById('tokenInput').value.trim();
     }
-  }
-  todoAddBtn.addEventListener('click', addTodo);
-  todoInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') addTodo();
-  });
 
-  // 页面加载，检查登录状态
-  showAuth();
+    // 拉取商品列表
+    async function fetchProducts() {
+        const token = getToken();
+        if (!token) {
+            renderMessage("请先在上方输入 JWT Token", true);
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/active`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error("获取商品失败，请检查 Token 是否过期");
+            
+            const products = await response.json();
+            renderTable(products);
+        } catch (error) {
+            renderMessage(error.message, true);
+            document.querySelector('#productTable tbody').innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">加载失败</td></tr>`;
+        }
+    }
+
+    // 渲染表格
+    function renderTable(products) {
+        const tbody = document.querySelector('#productTable tbody');
+        tbody.innerHTML = '';
+
+        if (products.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">暂无上架商品</td></tr>`;
+            return;
+        }
+
+        products.forEach(product => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${product.name}</td>
+                <td>${product.unit}</td>
+                <td>
+                    <input type="number" class="qty-input" data-id="${product.id}" min="0" step="any" placeholder="0">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 提交订单
+    async function submitOrders() {
+        const token = getToken();
+        if (!token) {
+            renderMessage("请先输入 JWT Token", true);
+            return;
+        }
+
+        // 收集数据
+        const inputs = document.querySelectorAll('.qty-input');
+        const orderItems = [];
+        
+        inputs.forEach(input => {
+            const qty = parseFloat(input.value);
+            if (qty > 0) {
+                orderItems.push({
+                    product_id: parseInt(input.dataset.id),
+                    quantity: qty
+                });
+            }
+        });
+
+        if (orderItems.length === 0) {
+            renderMessage("请至少填写一个商品的数量", true);
+            return;
+        }
+
+        // 发送请求
+        try {
+            renderMessage("正在提交...", false);
+            const response = await fetch(`${API_BASE_URL}/orders/batch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(orderItems)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "提交失败");
+            }
+
+            renderMessage(data.message || "提交成功！", false);
+            
+            // 提交成功后清空输入框
+            inputs.forEach(input => input.value = '');
+
+        } catch (error) {
+            renderMessage(error.message, true);
+        }
+    }
+
+    // 显示提示信息
+    function renderMessage(text, isError) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = text;
+        msgDiv.className = `msg ${isError ? 'error' : 'success'}`;
+    }
 </script>
 </body>
 </html>
