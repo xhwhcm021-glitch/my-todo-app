@@ -8,11 +8,18 @@
         body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; }
+        .login-box { background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;}
+        .login-box input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f8f9fa; font-weight: bold; }
         .qty-input { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-submit { display: block; width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        .btn { padding: 10px 15px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-login { background: #28a745; }
+        .btn-login:hover { background: #218838; }
+        .btn-load { background: #17a2b8; }
+        .btn-load:hover { background: #138496; }
+        .btn-submit { width: 100%; padding: 12px; background: #007bff; font-size: 16px; margin-top: 20px; }
         .btn-submit:hover { background: #0056b3; }
         .msg { text-align: center; margin-top: 15px; font-weight: bold; }
         .msg.error { color: red; }
@@ -24,10 +31,17 @@
 <div class="container">
     <h2>商品订货录入</h2>
     
-    <!-- 假设你在 localStorage 里存了 JWT Token，这里先放个输入框方便测试 -->
-    <div style="margin-bottom: 15px; padding: 10px; background: #fff3cd;">
-        <label>JWT Token (测试用): </label>
-        <input type="text" id="tokenInput" style="width: 70%; padding: 5px;" placeholder="粘贴你的 Bearer Token">
+    <div class="login-box">
+        <strong>1. 登录获取 Token:</strong>
+        <input type="text" id="username" value="test" placeholder="账号">
+        <input type="password" id="password" value="123456" placeholder="密码">
+        <button class="btn btn-login" onclick="login()">登录</button>
+        <input type="text" id="tokenInput" style="flex:1; min-width: 200px;" placeholder="Token 将自动填入这里" readonly>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong>2. 录入商品数量:</strong>
+        <button class="btn btn-load" onclick="fetchProducts()">加载商品列表</button>
     </div>
 
     <table id="productTable">
@@ -39,55 +53,80 @@
             </tr>
         </thead>
         <tbody>
-            <!-- JS 动态渲染 -->
-            <tr><td colspan="3" style="text-align: center;">加载中...</td></tr>
+            <tr><td colspan="3" style="text-align: center; color: #666;">请先登录，然后点击“加载商品列表”</td></tr>
         </tbody>
     </table>
 
-    <button class="btn-submit" onclick="submitOrders()">提交订单</button>
+    <button class="btn btn-submit" onclick="submitOrders()">提交订单</button>
     <div id="message" class="msg"></div>
 </div>
 
 <script>
     // ⚠️ 换成你真实的 Render 后端地址
-    const API_BASE_URL = "https://my-todo-app-xxxx.onrender.com"; 
+    const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com"; 
 
-    // 页面加载时拉取商品列表
-    document.addEventListener("DOMContentLoaded", () => {
-        fetchProducts();
-    });
-
-    // 获取 Token（测试时可以直接在这里写死）
     function getToken() {
         return document.getElementById('tokenInput').value.trim();
     }
 
-    // 拉取商品列表
+    function renderMessage(text, isError) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = text;
+        msgDiv.className = `msg ${isError ? 'error' : 'success'}`;
+    }
+
+    // 1. 登录获取真实 Token
+    async function login() {
+        const name = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        renderMessage("正在登录...", false);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, password })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('tokenInput').value = data.access_token;
+                renderMessage("登录成功！Token 已填入。", false);
+            } else {
+                renderMessage(data.detail || "登录失败", true);
+            }
+        } catch (error) {
+            renderMessage("登录网络错误", true);
+        }
+    }
+
+    // 2. 拉取商品列表
     async function fetchProducts() {
         const token = getToken();
         if (!token) {
-            renderMessage("请先在上方输入 JWT Token", true);
+            renderMessage("请先登录获取 Token", true);
             return;
         }
 
+        renderMessage("正在加载商品...", false);
         try {
             const response = await fetch(`${API_BASE_URL}/products/active`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (!response.ok) throw new Error("获取商品失败，请检查 Token 是否过期");
+            if (!response.ok) {
+                throw new Error(response.status === 403 ? "权限不足" : "获取失败，Token可能过期");
+            }
             
             const products = await response.json();
             renderTable(products);
+            renderMessage("", false);
         } catch (error) {
             renderMessage(error.message, true);
             document.querySelector('#productTable tbody').innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">加载失败</td></tr>`;
         }
     }
 
-    // 渲染表格
     function renderTable(products) {
         const tbody = document.querySelector('#productTable tbody');
         tbody.innerHTML = '';
@@ -102,23 +141,20 @@
             tr.innerHTML = `
                 <td>${product.name}</td>
                 <td>${product.unit}</td>
-                <td>
-                    <input type="number" class="qty-input" data-id="${product.id}" min="0" step="any" placeholder="0">
-                </td>
+                <td><input type="number" class="qty-input" data-id="${product.id}" min="0" step="any" placeholder="0"></td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // 提交订单
+    // 3. 提交订单
     async function submitOrders() {
         const token = getToken();
         if (!token) {
-            renderMessage("请先输入 JWT Token", true);
+            renderMessage("请先登录获取 Token", true);
             return;
         }
 
-        // 收集数据
         const inputs = document.querySelectorAll('.qty-input');
         const orderItems = [];
         
@@ -137,7 +173,6 @@
             return;
         }
 
-        // 发送请求
         try {
             renderMessage("正在提交...", false);
             const response = await fetch(`${API_BASE_URL}/orders/batch`, {
@@ -156,20 +191,11 @@
             }
 
             renderMessage(data.message || "提交成功！", false);
-            
-            // 提交成功后清空输入框
             inputs.forEach(input => input.value = '');
 
         } catch (error) {
             renderMessage(error.message, true);
         }
-    }
-
-    // 显示提示信息
-    function renderMessage(text, isError) {
-        const msgDiv = document.getElementById('message');
-        msgDiv.textContent = text;
-        msgDiv.className = `msg ${isError ? 'error' : 'success'}`;
     }
 </script>
 </body>
