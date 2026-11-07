@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Nu
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import insert
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 import os
 import jwt
@@ -18,24 +18,37 @@ if DATABASE_URL.startswith("postgres://"):
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "my-super-secret-key-123456")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # Token 7天过期
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 
 
-# 密码加密工具
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ================= 2. 数据库模型 =================
+class Shop(Base):
+    __tablename__ = "shops"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    
+    # 关系：一个门店可以有多个员工
+    users = relationship("User", back_populates="shop")
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), nullable=False, unique=True)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(String(50), nullable=False)
+    
+    # 角色：admin, boss, staff, partner
+    role = Column(String(50), nullable=False) 
+    
+    # 门店外键 (可为空，比如 boss 不需要门店)
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
+    
     is_active = Column(Boolean, default=True)
     
+    shop = relationship("Shop", back_populates="users")
     orders = relationship("Order", back_populates="user")
 
 class Product(Base):
@@ -59,10 +72,9 @@ class Order(Base):
     user = relationship("User", back_populates="orders")
     product = relationship("Product", back_populates="orders")
 
-# 自动建表（如果表不存在会自动创建）
 Base.metadata.create_all(bind=engine)
 
-# ================= 3. FastAPI 与跨域配置 =================
+# ================= 3. FastAPI 与跨域 =================
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
@@ -96,9 +108,12 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("user_id")
         role: str = payload.get("role")
+        shop_id: int = payload.get("shop_id") # 提取 shop_id
+        
         if user_id is None or role is None:
-            raise HTTPException(status_code=401, detail="无效的 Token 载荷")
-        return {"user_id": user_id, "role": role}
+            raise HTTPException(status_code=401, detail="无效的 Token")
+            
+        return {"user_id": user_id, "role": role, "shop_id": shop_id}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="登录已过期")
     except jwt.InvalidTokenError:
@@ -113,7 +128,7 @@ class RoleChecker:
             raise HTTPException(status_code=403, detail="权限不足")
         return current_user
 
-# ================= 5. Pydantic 数据模型 =================
+# ================= 5. Pydantic 模型 =================
 class UserLogin(BaseModel):
     name: str
     password: str
@@ -124,6 +139,7 @@ class OrderItemCreate(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str
+    shop_id: Optional[int] = None
 
 class ProductCreate(BaseModel):
     name: str
@@ -137,6 +153,7 @@ class UserCreate(BaseModel):
     name: str
     password: str
     role: str
+    shop_id: Optional[int] = None  # 新增用户时可指定门店
 
 class PasswordReset(BaseModel):
     new_password: str
@@ -144,21 +161,42 @@ class PasswordReset(BaseModel):
 class OrderUpdate(BaseModel):
     quantity: float
 
-# ================= 6. 基础与测试接口 =================
+class ShopCreate(BaseModel):
+    name: str
+
+# ================= 6. 登录与初始化数据 =================
 @app.post("/login")
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.name == user_data.name).first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     
-    access_token = create_access_token(data={"user_id": user.id, "role": user.role})
+    # 把 shop_id 也一起塞进 Token 载荷里
+    access_token = create_access_token(data={
+        "user_id": user.id, 
+        "role": user.role,
+        "shop_id": user.shop_id
+    })
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/seed_data")
 def seed_data(db: Session = Depends(get_db)):
-    # 如果没有 admin 账号，创建一个默认的
-    if not db.query(User).filter(User.role == "admin").first():
-        db.add(User(name="admin", role="admin", hashed_password=get_password_hash("123456"), is_active=True))
+    # 1. 造门店
+    if not db.query(Shop).first():
+        db.add_all([Shop(name="东城分店"), Shop(name="西城分店")])
+        db.commit()
+    
+    shop_dong = db.query(Shop).filter(Shop.name == "东城分店").first()
+
+    # 2. 造用户
+    if not db.query(User).filter(User.name == "admin").first():
+        db.add(User(name="admin", role="admin", hashed_password=get_password_hash("123456")))
+    if not db.query(User).filter(User.name == "boss").first():
+        db.add(User(name="boss", role="boss", hashed_password=get_password_hash("123456")))
+    if not db.query(User).filter(User.name == "staff1").first():
+        db.add(User(name="staff1", role="staff", shop_id=shop_dong.id, hashed_password=get_password_hash("123456")))
+
+    # 3. 造商品
     if not db.query(Product).first():
         db.add_all([
             Product(name="苹果", unit="斤", is_active=True),
@@ -166,9 +204,9 @@ def seed_data(db: Session = Depends(get_db)):
             Product(name="可乐", unit="箱", is_active=True),
         ])
     db.commit()
-    return {"message": "数据生成成功，默认管理员: admin/123456"}
+    return {"message": "初始化成功！账号: admin, boss, staff1，密码均为 123456"}
 
-# ================= 7. 店员接口 =================
+# ================= 7. 业务接口 (店员) =================
 @app.get("/products/active")
 def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     return db.query(Product).filter(Product.is_active == True).all()
@@ -177,7 +215,7 @@ def get_active_products(db: Session = Depends(get_db), current_user: dict = Depe
 def create_orders_batch(
     order_items: List[OrderItemCreate], 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(RoleChecker(["store_a", "store_b"])) 
+    current_user: dict = Depends(RoleChecker(["staff"])) # 只有 staff 能下单
 ):
     today = date.today()
     valid_items = [item for item in order_items if item.quantity > 0]
@@ -202,9 +240,9 @@ def create_orders_batch(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-# ================= 8. 老板看板接口 =================
+# ================= 8. 业务接口 (老板) =================
 @app.get("/boss/daily_summary")
-def get_daily_summary(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["h", "boss_h"]))):
+def get_daily_summary(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
     today = date.today()
     results = db.query(
         Product.name.label("product_name"), Product.unit.label("unit"), func.sum(Order.quantity).label("total_quantity")
@@ -214,27 +252,46 @@ def get_daily_summary(db: Session = Depends(get_db), current_user: dict = Depend
 
     return {"date": str(today), "summary": [{"product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity)} for r in results]}
 
-# ================= 9. 管理员接口 =================
+# ================= 9. 业务接口 (管理员) =================
+# 门店管理
+@app.get("/admin/shops")
+def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    return db.query(Shop).all()
+
+@app.post("/admin/shops")
+def admin_create_shop(shop_data: ShopCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    if db.query(Shop).filter(Shop.name == shop_data.name).first():
+        raise HTTPException(status_code=400, detail="门店已存在")
+    db.add(Shop(name=shop_data.name))
+    db.commit()
+    return {"message": "门店创建成功"}
+
+# 用户管理
 @app.get("/admin/users")
 def admin_get_users(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    return [{"id": u.id, "name": u.name, "role": u.role, "is_active": u.is_active} for u in db.query(User).all()]
+    users = db.query(User).all()
+    return [{"id": u.id, "name": u.name, "role": u.role, "shop_id": u.shop_id, "is_active": u.is_active} for u in users]
 
 @app.post("/admin/users")
 def admin_create_user(user_data: UserCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     if db.query(User).filter(User.name == user_data.name).first():
         raise HTTPException(status_code=400, detail="用户名已存在")
-    new_user = User(name=user_data.name, role=user_data.role, hashed_password=get_password_hash(user_data.password), is_active=True)
+    new_user = User(
+        name=user_data.name, role=user_data.role, shop_id=user_data.shop_id,
+        hashed_password=get_password_hash(user_data.password), is_active=True
+    )
     db.add(new_user)
     db.commit()
-    return {"message": "创建成功"}
+    return {"message": "用户创建成功"}
 
 @app.put("/admin/users/{user_id}/role")
 def admin_update_role(user_id: int, role_data: RoleUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user: raise HTTPException(status_code=404, detail="用户不存在")
     user.role = role_data.role
+    user.shop_id = role_data.shop_id
     db.commit()
-    return {"message": "角色已更新"}
+    return {"message": "用户信息已更新"}
 
 @app.put("/admin/users/{user_id}/password")
 def admin_reset_password(user_id: int, pwd_data: PasswordReset, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -255,6 +312,7 @@ def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=400, detail="该用户有历史订单，无法删除")
     return {"message": "用户已删除"}
 
+# 商品管理
 @app.get("/admin/products")
 def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     return db.query(Product).all()
@@ -288,9 +346,10 @@ def admin_delete_product(product_id: int, db: Session = Depends(get_db), current
     try:
         db.delete(product); db.commit()
     except Exception:
-        raise HTTPException(status_code=400, detail="该商品有历史订单，无法直接删除，建议下架")
+        raise HTTPException(status_code=400, detail="该商品有历史订单，无法直接删除")
     return {"message": "商品已彻底删除"}
 
+# 订单管理
 @app.get("/admin/orders")
 def admin_get_orders(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     results = db.query(
