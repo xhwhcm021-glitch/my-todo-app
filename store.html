@@ -2,177 +2,261 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>店员订货端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>订货系统 - 店员端</title>
+    <!-- 引入 TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; margin: 0;}
-        .header { display: flex; justify-content: space-between; max-width: 800px; margin: 0 auto 20px auto; background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #f8f9fa; font-weight: bold; }
-        .qty-input { width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn { padding: 10px 15px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .btn-logout { background: #dc3545; }
-        .btn-load { background: #17a2b8; }
-        .btn-submit { width: 100%; padding: 12px; background: #007bff; font-size: 16px; margin-top: 20px; }
-        .btn-submit:hover { background: #0056b3; }
-        .msg { text-align: center; margin-top: 15px; font-weight: bold; }
-        .msg.error { color: red; }
-        .msg.success { color: green; }
+        /* 隐藏数字输入框自带的上下箭头 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 h-screen flex flex-col font-sans antialiased text-gray-800">
 
-<div class="header">
-    <div><strong>欢迎使用订货系统</strong></div>
-    <button class="btn btn-logout" onclick="logout()">退出登录</button>
-</div>
+    <!-- 1. 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 h-14 flex justify-between items-center">
+            <h1 class="text-lg font-bold text-gray-800">订货系统</h1>
+            <div class="flex items-center space-x-3">
+                <!-- 改密按钮 -->
+                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md active:bg-blue-50">
+                    改密
+                </button>
+                <!-- 退出按钮 -->
+                <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md active:bg-red-50">
+                    退出
+                </button>
+            </div>
+        </div>
+    </header>
 
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <strong>请填写订货数量:</strong>
-        <button class="btn btn-load" onclick="fetchProducts()">加载商品列表</button>
+    <!-- 2. 主体商品列表 -->
+    <main id="productList" class="flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-3">
+        <div class="flex justify-center items-center py-10 text-gray-400">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            加载商品中...
+        </div>
+    </main>
+
+    <!-- 3. 底部固定提交按钮 -->
+    <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+        <button id="submitBtn" onclick="submitOrders()" class="w-full bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+            提交订单
+        </button>
+    </footer>
+
+    <!-- 4. 修改密码弹窗 (默认隐藏) -->
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
+                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label>
+                    <input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="请输入当前密码">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+                    <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="至少 6 位新密码">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+                    <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="再次输入新密码">
+                </div>
+                <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">确认修改</button>
+            </div>
+        </div>
     </div>
 
-    <table id="productTable">
-        <thead>
-            <tr>
-                <th>商品名称</th>
-                <th>单位</th>
-                <th>订货数量</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="3" style="text-align: center; color: #666;">点击上方按钮加载商品</td></tr>
-        </tbody>
-    </table>
+    <!-- 5. JS 逻辑 -->
+    <script>
+        const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+        const token = localStorage.getItem('jwt_token');
 
-    <button class="btn btn-submit" onclick="submitOrders()">提交订单</button>
-    <div id="message" class="msg"></div>
-</div>
-
-<script>
-    const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com"; 
-
-    // 🌟 核心：页面加载时，检查有没有登录
-    const token = localStorage.getItem('jwt_token');
-    if (!token) {
-        alert("您还未登录，请先登录！");
-        window.location.href = 'login.html';
-    }
-
-    // 🌟 核心：统一封装带 Token 的请求
-    async function authFetch(endpoint, options = {}) {
-        // 确保 headers 存在
-        options.headers = options.headers || {};
-        // 自动加上 Bearer Token
-        options.headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-        
-        // 如果遇到 401（Token 过期/无效），直接踢回登录页
-        if (response.status === 401) {
-            localStorage.removeItem('jwt_token');
-            alert("登录已过期，请重新登录");
+        // 鉴权守卫
+        if (!token) {
             window.location.href = 'login.html';
-            return; 
         }
-        return response;
-    }
-
-    function logout() {
-        localStorage.removeItem('jwt_token');
-        window.location.href = 'login.html';
-    }
-
-    function renderMessage(text, isError) {
-        const msgDiv = document.getElementById('message');
-        msgDiv.textContent = text;
-        msgDiv.className = `msg ${isError ? 'error' : 'success'}`;
-    }
-
-    // 拉取商品列表 (使用 authFetch)
-    async function fetchProducts() {
-        renderMessage("正在加载商品...", false);
         try {
-            // 这里不再需要手动写 headers 加 token，authFetch 已经包办了
-            const response = await authFetch('/products/active');
-
-            if (!response.ok) {
-                throw new Error(response.status === 403 ? "权限不足，无法查看" : "获取商品失败");
+            const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload.role !== 'staff') { // 注意这里改成了最新的 staff 角色
+                alert("无权访问店员端");
+                window.location.href = 'login.html';
             }
-            
-            const products = await response.json();
-            renderTable(products);
-            renderMessage("", false);
-        } catch (error) {
-            renderMessage(error.message, true);
-            document.querySelector('#productTable tbody').innerHTML = `<tr><td colspan="3" style="text-align: center; color: red;">加载失败</td></tr>`;
-        }
-    }
-
-    function renderTable(products) {
-        const tbody = document.querySelector('#productTable tbody');
-        tbody.innerHTML = '';
-
-        if (products.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center;">暂无上架商品</td></tr>`;
-            return;
+        } catch (e) {
+            window.location.href = 'login.html';
         }
 
-        products.forEach(product => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${product.name}</td>
-                <td>${product.unit}</td>
-                <td><input type="number" class="qty-input" data-id="${product.id}" min="0" step="any" placeholder="0"></td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+        function logout() {
+            localStorage.removeItem('jwt_token');
+            window.location.href = 'login.html';
+        }
 
-    // 提交订单 (使用 authFetch)
-    async function submitOrders() {
-        const inputs = document.querySelectorAll('.qty-input');
-        const orderItems = [];
-        
-        inputs.forEach(input => {
-            const qty = parseFloat(input.value);
-            if (qty > 0) {
-                orderItems.push({
-                    product_id: parseInt(input.dataset.id),
-                    quantity: qty
+        async function authFetch(endpoint, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+            if (response.status === 401) {
+                localStorage.removeItem('jwt_token');
+                alert("登录已过期，请重新登录");
+                window.location.href = 'login.html';
+                return;
+            }
+            return response;
+        }
+
+        // 加载商品
+        async function loadProducts() {
+            const mainContainer = document.getElementById('productList');
+            try {
+                const response = await authFetch('/products/active');
+                if (!response.ok) throw new Error("获取商品失败");
+                
+                const products = await response.json();
+                mainContainer.innerHTML = ''; 
+
+                if (products.length === 0) {
+                    mainContainer.innerHTML = `<div class="text-center text-gray-500 mt-10"><p>暂无上架商品</p></div>`;
+                    return;
+                }
+
+                products.forEach(product => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center";
+                    card.innerHTML = `
+                        <div class="flex flex-col">
+                            <span class="text-base font-bold text-gray-800">${product.name}</span>
+                            <span class="text-xs text-gray-400 mt-1">单位: ${product.unit}</span>
+                        </div>
+                        <div class="relative">
+                            <input type="number" min="0" step="any" data-id="${product.id}" placeholder="0" class="qty-input w-24 h-12 text-center text-xl font-bold text-blue-600 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                        </div>
+                    `;
+                    mainContainer.appendChild(card);
                 });
+            } catch (error) {
+                mainContainer.innerHTML = `<div class="text-center text-red-500 mt-10"><p>加载失败: ${error.message}</p><button onclick="loadProducts()" class="mt-4 text-blue-500 underline">点击重试</button></div>`;
             }
-        });
-
-        if (orderItems.length === 0) {
-            renderMessage("请至少填写一个商品的数量", true);
-            return;
         }
 
-        try {
-            renderMessage("正在提交...", false);
-            const response = await authFetch('/orders/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }, // authFetch 会自动补上 Auth 头
-                body: JSON.stringify(orderItems)
+        // 提交订单
+        async function submitOrders() {
+            const inputs = document.querySelectorAll('.qty-input');
+            const orderItems = [];
+            
+            inputs.forEach(input => {
+                const qty = parseFloat(input.value);
+                if (qty > 0) {
+                    orderItems.push({ product_id: parseInt(input.dataset.id), quantity: qty });
+                }
             });
 
-            const data = await response.json();
+            if (orderItems.length === 0) return alert("请至少填写一个商品的数量");
 
-            if (!response.ok) {
-                throw new Error(data.detail || "提交失败");
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "提交中...";
+
+            try {
+                const response = await authFetch('/orders/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderItems)
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || "提交失败");
+                
+                alert(data.message || "提交成功！");
+                inputs.forEach(input => input.value = '');
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
-
-            renderMessage(data.message || "提交成功！", false);
-            inputs.forEach(input => input.value = '');
-
-        } catch (error) {
-            renderMessage(error.message, true);
         }
-    }
-</script>
+
+        // ================= 修改密码相关逻辑 =================
+        const pwdModal = document.getElementById('passwordModal');
+        const pwdErrorMsg = document.getElementById('pwdErrorMsg');
+
+        function showPasswordModal() {
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            pwdErrorMsg.classList.add('hidden');
+            pwdModal.classList.remove('hidden');
+        }
+
+        function hidePasswordModal() {
+            pwdModal.classList.add('hidden');
+        }
+
+        async function submitChangePassword() {
+            const oldPwd = document.getElementById('oldPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            const confirmPwd = document.getElementById('confirmPassword').value;
+            const btn = document.getElementById('submitPwdBtn');
+
+            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写所有密码框");
+            if (newPwd.length < 6) return showPwdError("新密码不能少于 6 位");
+            if (newPwd !== confirmPwd) return showPwdError("两次输入的新密码不一致");
+
+            btn.disabled = true;
+            btn.textContent = "提交中...";
+            pwdErrorMsg.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert("密码修改成功！为了安全，请重新登录。");
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = 'login.html';
+                } else {
+                    showPwdError(data.detail || "修改失败，请检查旧密码");
+                }
+            } catch (error) {
+                showPwdError("网络错误，请稍后再试");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "确认修改";
+            }
+        }
+
+        function showPwdError(msg) {
+            pwdErrorMsg.textContent = msg;
+            pwdErrorMsg.classList.remove('hidden');
+        }
+
+        window.onload = loadProducts;
+    </script>
 </body>
 </html>
