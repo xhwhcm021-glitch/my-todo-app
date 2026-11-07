@@ -7,7 +7,7 @@
     <!-- 引入 TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 隐藏数字输入框自带的上下箭头 */
+        /* 隐藏数字输入框自带的上下箭头，让界面更干净 */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
@@ -23,22 +23,24 @@
     <!-- 1. 顶部导航栏 -->
     <header class="bg-white shadow-sm sticky top-0 z-10">
         <div class="px-4 h-14 flex justify-between items-center">
-            <h1 class="text-lg font-bold text-gray-800">订货系统</h1>
+            <h1 class="text-lg font-bold text-gray-800 tracking-wide">订货系统</h1>
             <div class="flex items-center space-x-3">
-                <!-- 改密按钮 -->
-                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md active:bg-blue-50">
+                <!-- 🌟 改密按钮 -->
+                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md active:bg-blue-50 transition-colors">
                     改密
                 </button>
                 <!-- 退出按钮 -->
-                <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md active:bg-red-50">
+                <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md active:bg-red-50 transition-colors">
                     退出
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- 2. 主体商品列表 -->
-    <main id="productList" class="flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-3">
+    <!-- 2. 主体商品列表 (可滚动) -->
+    <!-- pb-24 是为了给底部固定按钮留出空间 -->
+    <main id="productList" class="flex-1 overflow-y-auto px-4 pt-4 pb-28 space-y-3">
+        <!-- 骨架屏/加载状态 -->
         <div class="flex justify-center items-center py-10 text-gray-400">
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -49,7 +51,7 @@
     </main>
 
     <!-- 3. 底部固定提交按钮 -->
-    <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+    <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
         <button id="submitBtn" onclick="submitOrders()" class="w-full bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
             提交订单
         </button>
@@ -88,6 +90,7 @@
 
     <!-- 5. JS 逻辑 -->
     <script>
+        // ⚠️ 换成你真实的 Render 后端地址
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
 
@@ -97,7 +100,8 @@
         }
         try {
             const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-            if (payload.role !== 'staff') { // 注意这里改成了最新的 staff 角色
+            // 确保只有最新的 staff 角色能进入
+            if (payload.role !== 'staff') {
                 alert("无权访问店员端");
                 window.location.href = 'login.html';
             }
@@ -110,6 +114,7 @@
             window.location.href = 'login.html';
         }
 
+        // 统一请求封装，带 Token 和过期拦截
         async function authFetch(endpoint, options = {}) {
             options.headers = options.headers || {};
             options.headers['Authorization'] = `Bearer ${token}`;
@@ -123,7 +128,7 @@
             return response;
         }
 
-        // 加载商品
+        // 获取并渲染商品列表
         async function loadProducts() {
             const mainContainer = document.getElementById('productList');
             try {
@@ -131,13 +136,17 @@
                 if (!response.ok) throw new Error("获取商品失败");
                 
                 const products = await response.json();
-                mainContainer.innerHTML = ''; 
+                mainContainer.innerHTML = ''; // 清空加载动画
 
                 if (products.length === 0) {
-                    mainContainer.innerHTML = `<div class="text-center text-gray-500 mt-10"><p>暂无上架商品</p></div>`;
+                    mainContainer.innerHTML = `
+                        <div class="text-center text-gray-500 mt-10">
+                            <p>暂无上架商品</p>
+                        </div>`;
                     return;
                 }
 
+                // 动态渲染卡片
                 products.forEach(product => {
                     const card = document.createElement('div');
                     card.className = "bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex justify-between items-center";
@@ -147,13 +156,25 @@
                             <span class="text-xs text-gray-400 mt-1">单位: ${product.unit}</span>
                         </div>
                         <div class="relative">
-                            <input type="number" min="0" step="any" data-id="${product.id}" placeholder="0" class="qty-input w-24 h-12 text-center text-xl font-bold text-blue-600 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                            <input 
+                                type="number" 
+                                min="0" 
+                                step="any" 
+                                data-id="${product.id}" 
+                                placeholder="0" 
+                                class="qty-input w-24 h-12 text-center text-xl font-bold text-blue-600 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            >
                         </div>
                     `;
                     mainContainer.appendChild(card);
                 });
+
             } catch (error) {
-                mainContainer.innerHTML = `<div class="text-center text-red-500 mt-10"><p>加载失败: ${error.message}</p><button onclick="loadProducts()" class="mt-4 text-blue-500 underline">点击重试</button></div>`;
+                mainContainer.innerHTML = `
+                    <div class="text-center text-red-500 mt-10">
+                        <p>加载失败: ${error.message}</p>
+                        <button onclick="loadProducts()" class="mt-4 text-blue-500 underline">点击重试</button>
+                    </div>`;
             }
         }
 
@@ -162,17 +183,26 @@
             const inputs = document.querySelectorAll('.qty-input');
             const orderItems = [];
             
+            // 收集所有数量大于 0 的商品
             inputs.forEach(input => {
                 const qty = parseFloat(input.value);
                 if (qty > 0) {
-                    orderItems.push({ product_id: parseInt(input.dataset.id), quantity: qty });
+                    orderItems.push({
+                        product_id: parseInt(input.dataset.id),
+                        quantity: qty
+                    });
                 }
             });
 
-            if (orderItems.length === 0) return alert("请至少填写一个商品的数量");
+            if (orderItems.length === 0) {
+                alert("请至少填写一个商品的数量");
+                return;
+            }
 
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
+
+            // 防止重复点击
             submitBtn.disabled = true;
             submitBtn.textContent = "提交中...";
 
@@ -182,20 +212,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderItems)
                 });
+
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.detail || "提交失败");
-                
+
+                if (!response.ok) {
+                    throw new Error(data.detail || "提交失败");
+                }
+
                 alert(data.message || "提交成功！");
+                
+                // 提交成功后，清空所有输入框
                 inputs.forEach(input => input.value = '');
+
             } catch (error) {
                 alert(error.message);
             } finally {
+                // 恢复按钮状态
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
         }
 
-        // ================= 修改密码相关逻辑 =================
+        // ================= 修改密码逻辑 =================
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
 
@@ -217,6 +255,7 @@
             const confirmPwd = document.getElementById('confirmPassword').value;
             const btn = document.getElementById('submitPwdBtn');
 
+            // 基础校验
             if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写所有密码框");
             if (newPwd.length < 6) return showPwdError("新密码不能少于 6 位");
             if (newPwd !== confirmPwd) return showPwdError("两次输入的新密码不一致");
@@ -256,6 +295,7 @@
             pwdErrorMsg.classList.remove('hidden');
         }
 
+        // 初始化加载商品
         window.onload = loadProducts;
     </script>
 </body>

@@ -3,97 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系统登录</title>
-    <style>
-        body { font-family: sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; }
-        h2 { text-align: center; color: #333; margin-top: 0; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
-        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px;}
-        button:hover { background: #218838; }
-        .msg { color: red; text-align: center; margin-top: 10px; font-size: 14px; }
-    </style>
+    <title>订货系统 - 登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 h-screen flex items-center justify-center font-sans antialiased text-gray-800">
 
-<div class="login-card">
-    <h2>订货系统登录</h2>
-    <div class="form-group">
-        <label>账号</label>
-        <input type="text" id="username" placeholder="请输入账号" value="test">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md mx-4">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-blue-600 tracking-tight">订货系统</h1>
+            <p class="text-gray-400 text-sm mt-2">请使用您的账号登录系统</p>
+        </div>
+
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">账号</label>
+                <input type="text" id="username" value="admin" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="请输入账号">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                <input type="password" id="password" value="123456" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="请输入密码">
+            </div>
+            
+            <p id="msg" class="text-sm text-red-500 font-medium hidden text-center"></p>
+
+            <button id="loginBtn" onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:bg-gray-400 mt-4 shadow-lg shadow-blue-500/30">
+                登 录
+            </button>
+        </div>
     </div>
-    <div class="form-group">
-        <label>密码</label>
-        <input type="password" id="password" placeholder="请输入密码" value="123456">
-    </div>
-    <button onclick="handleLogin()">登 录</button>
-    <div id="msg" class="msg"></div>
-</div>
 
-<script>
-    // ⚠️ 换成你真实的 Render 后端地址
-    const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com"; 
+    <script>
+        const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
 
-    async function handleLogin() {
-        const name = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        const msgDiv = document.getElementById('msg');
-        
-        if (!name || !password) {
-            msgDiv.textContent = "请输入账号和密码";
-            return;
-        }
+        // 监听回车键登录
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') handleLogin();
+        });
 
-        msgDiv.style.color = "#666";
-        msgDiv.textContent = "正在登录...";
+        async function handleLogin() {
+            const name = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const msgDiv = document.getElementById('msg');
+            const btn = document.getElementById('loginBtn');
+            
+            if (!name || !password) {
+                msgDiv.textContent = "请输入账号和密码";
+                msgDiv.classList.remove('hidden');
+                return;
+            }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, password })
-            });
-            const data = await response.json();
+            btn.disabled = true;
+            btn.textContent = "登录中...";
+            msgDiv.classList.add('hidden');
 
-            if (response.ok) {
-                // 1. 保存 Token 到本地
-                localStorage.setItem('jwt_token', data.access_token);
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, password })
+                });
+                const data = await response.json();
 
-                // 2. 解析 JWT Payload 获取角色
-                const token = data.access_token;
-                const payloadBase64 = token.split('.')[1];
-                // 处理 Base64Url 编码（将 - 换成 +，_ 换成 /）
-                const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-                const payload = JSON.parse(atob(base64));
-                const role = payload.role;
+                if (response.ok) {
+                    localStorage.setItem('jwt_token', data.access_token);
+                    localStorage.setItem('user_role', data.role); // 顺便存一下角色方便后续使用
 
-                // 3. 根据角色跳转
-                msgDiv.style.color = "green";
-                msgDiv.textContent = `登录成功，角色: ${role}，正在跳转...`;
-                
-                setTimeout(() => {
-                    if (role.startsWith('store_')) {
-                        window.location.href = 'store.html'; // 店员端
-                    } else if (role === 'admin') {
-                        window.location.href = 'admin.html'; // 管理端 (待开发)
-                    } else if (role === 'h' || role === 'boss_h') {
-                        window.location.href = 'boss.html';  // 老板端 (待开发)
+                    // 解析 JWT 获取角色
+                    const token = data.access_token;
+                    const base64Url = token.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const payload = JSON.parse(window.atob(base64));
+                    const role = payload.role;
+
+                    // 根据角色跳转
+                    if (role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else if (role === 'boss') {
+                        window.location.href = 'boss.html';
+                    } else if (role === 'staff') {
+                        window.location.href = 'store.html';
                     } else {
                         alert('未知角色，无对应页面');
                     }
-                }, 1000);
-
-            } else {
-                msgDiv.style.color = "red";
-                msgDiv.textContent = data.detail || "账号或密码错误";
+                } else {
+                    msgDiv.textContent = data.detail || "账号或密码错误";
+                    msgDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                msgDiv.textContent = "网络错误，请稍后重试";
+                msgDiv.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "登 录";
             }
-        } catch (error) {
-            msgDiv.style.color = "red";
-            msgDiv.textContent = "网络错误，请稍后重试";
         }
-    }
-</script>
+    </script>
 </body>
 </html>

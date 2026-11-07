@@ -2,106 +2,238 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>老板看板 - 今日订货汇总</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; padding: 20px; margin: 0;}
-        .header { display: flex; justify-content: space-between; max-width: 1000px; margin: 0 auto 20px auto; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        h2 { color: #333; margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px; display: inline-block;}
-        .stats { display: flex; gap: 20px; margin-bottom: 20px; }
-        .stat-card { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid #007bff; }
-        .stat-card h3 { margin: 0; color: #666; font-size: 14px; }
-        .stat-card .num { font-size: 28px; font-weight: bold; color: #333; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: left; }
-        th { background-color: #f8f9fa; font-weight: 600; color: #555; }
-        .btn { padding: 8px 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;}
-        .btn-logout { background: #dc3545; }
-        .highlight { color: #d9534f; font-weight: bold; font-size: 18px;}
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老板看板 - 数据汇总</title>
+    <!-- 引入 TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen font-sans antialiased text-gray-800">
 
-<div class="header">
-    <div><strong>📊 老板决策看板</strong></div>
-    <button class="btn btn-logout" onclick="logout()">退出登录</button>
-</div>
-
-<div class="container">
-    <h2>今日订货总汇总</h2>
-    <div class="stats">
-        <div class="stat-card">
-            <h3>今日日期</h3>
-            <div class="num" id="todayDate">--</div>
+    <!-- 1. 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl">📊</span>
+                <h1 class="text-xl font-bold text-gray-800 tracking-wide">老板决策看板</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
+                    改密
+                </button>
+                <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors">
+                    退出
+                </button>
+            </div>
         </div>
-        <div class="stat-card" style="border-left-color: #28a745;">
-            <h3>总订货商品种类</h3>
-            <div class="num" id="totalKinds">--</div>
+    </header>
+
+    <!-- 2. 主体内容 -->
+    <main class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        
+        <!-- 数据概览卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">今日日期</p>
+                    <h2 class="text-2xl font-bold text-gray-800" id="todayDate">加载中...</h2>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-xl text-blue-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1">总订货种类</p>
+                    <h2 class="text-2xl font-bold text-green-600"><span id="totalKinds">0</span> <span class="text-sm font-normal text-gray-400">种</span></h2>
+                </div>
+                <div class="p-3 bg-green-50 rounded-xl text-green-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">今日订货明细汇总</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-sm text-gray-500 bg-gray-50">
+                            <th class="px-6 py-4 font-medium">商品名称</th>
+                            <th class="px-6 py-4 font-medium">单位</th>
+                            <th class="px-6 py-4 font-medium text-right">订货总量</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="3" class="px-6 py-10 text-center text-gray-400">
+                                <svg class="animate-spin h-6 w-6 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                加载数据中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. 修改密码弹窗 (复用标准设计) -->
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
+                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label>
+                    <input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="请输入当前密码">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+                    <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="至少 6 位新密码">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+                    <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="再次输入新密码">
+                </div>
+                <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">确认修改</button>
+            </div>
         </div>
     </div>
 
-    <table id="summaryTable">
-        <thead>
-            <tr>
-                <th>商品名称</th>
-                <th>单位</th>
-                <th>今日总订货量</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td colspan="3" style="text-align: center;">加载中...</td></tr>
-        </tbody>
-    </table>
-</div>
+    <!-- 4. JS 逻辑 -->
+    <script>
+        const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+        const token = localStorage.getItem('jwt_token');
 
-<script>
-    const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
-    const token = localStorage.getItem('jwt_token');
-
-    if (!token) { window.location.href = 'login.html'; }
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-        if (payload.role !== 'h' && payload.role !== 'boss_h') {
-            alert("无权访问老板看板"); window.location.href = 'login.html';
-        }
-    } catch (e) { window.location.href = 'login.html'; }
-
-    function logout() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
-
-    async function loadSummary() {
+        // 鉴权守卫
+        if (!token) { window.location.href = 'login.html'; }
         try {
-            const res = await fetch(`${API_BASE_URL}/boss/daily_summary`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("获取数据失败");
-            
-            const data = await res.json();
-            document.getElementById('todayDate').textContent = data.date;
-            document.getElementById('totalKinds').textContent = data.summary.length;
-            
-            const tbody = document.querySelector('#summaryTable tbody');
-            tbody.innerHTML = '';
-            
-            if (data.summary.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color:#999;">今天还没有人订货</td></tr>`;
-                return;
+            const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            if (payload.role !== 'boss') {
+                alert("无权访问老板看板");
+                window.location.href = 'login.html';
             }
+        } catch (e) { window.location.href = 'login.html'; }
 
-            data.summary.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${item.product_name}</strong></td>
-                    <td>${item.unit}</td>
-                    <td class="highlight">${item.total_quantity}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } catch (error) {
-            alert(error.message);
+        function logout() {
+            localStorage.removeItem('jwt_token');
+            window.location.href = 'login.html';
         }
-    }
 
-    window.onload = loadSummary;
-</script>
+        // 加载数据
+        async function loadSummary() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/boss/daily_summary`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error("获取数据失败");
+                
+                const data = await response.json();
+                
+                document.getElementById('todayDate').textContent = data.date;
+                document.getElementById('totalKinds').textContent = data.summary.length;
+                
+                const tbody = document.getElementById('summaryTableBody');
+                tbody.innerHTML = '';
+                
+                if (data.summary.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-gray-400">今天还没有人订货哦</td></tr>`;
+                    return;
+                }
+
+                data.summary.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 font-medium text-gray-800">${item.product_name}</td>
+                        <td class="px-6 py-4 text-gray-500 text-sm">${item.unit}</td>
+                        <td class="px-6 py-4 text-right">
+                            <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
+                                ${item.total_quantity}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                document.getElementById('summaryTableBody').innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-red-500">${error.message}</td></tr>`;
+            }
+        }
+
+        // ================= 修改密码相关逻辑 =================
+        const pwdModal = document.getElementById('passwordModal');
+        const pwdErrorMsg = document.getElementById('pwdErrorMsg');
+
+        function showPasswordModal() {
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            pwdErrorMsg.classList.add('hidden');
+            pwdModal.classList.remove('hidden');
+        }
+
+        function hidePasswordModal() {
+            pwdModal.classList.add('hidden');
+        }
+
+        async function submitChangePassword() {
+            const oldPwd = document.getElementById('oldPassword').value;
+            const newPwd = document.getElementById('newPassword').value;
+            const confirmPwd = document.getElementById('confirmPassword').value;
+            const btn = document.getElementById('submitPwdBtn');
+
+            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写所有密码框");
+            if (newPwd.length < 6) return showPwdError("新密码不能少于 6 位");
+            if (newPwd !== confirmPwd) return showPwdError("两次输入的新密码不一致");
+
+            btn.disabled = true;
+            btn.textContent = "提交中...";
+            pwdErrorMsg.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert("密码修改成功！请重新登录。");
+                    localStorage.removeItem('jwt_token');
+                    window.location.href = 'login.html';
+                } else {
+                    showPwdError(data.detail || "修改失败，请检查旧密码");
+                }
+            } catch (error) {
+                showPwdError("网络错误，请稍后再试");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "确认修改";
+            }
+        }
+
+        function showPwdError(msg) {
+            pwdErrorMsg.textContent = msg;
+            pwdErrorMsg.classList.remove('hidden');
+        }
+
+        // 初始化
+        window.onload = loadSummary;
+    </script>
 </body>
 </html>
