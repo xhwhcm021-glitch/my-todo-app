@@ -375,7 +375,72 @@ def admin_delete_order(order_id: int, db: Session = Depends(get_db), current_use
     if not order: raise HTTPException(status_code=404, detail="订单不存在")
     db.delete(order); db.commit()
     return {"message": "订单已删除"}
+# ================= 10. 密码管理接口 =================
 
+# 定义 Pydantic 模型
+class ChangePasswordReq(BaseModel):
+    old_password: str
+    new_password: str
+
+class AdminResetPasswordReq(BaseModel):
+    user_id: int
+    new_password: str
+
+# 10.1 用户修改自己的密码 (任何登录用户可用)
+@app.post("/auth/change-password")
+def change_my_password(
+    pwd_data: ChangePasswordReq, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user) # 任何有效 Token 都可以进
+):
+    # 从 JWT 解析出的字典中获取当前登录用户 ID
+    user_id = current_user["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+        
+    # 验证旧密码是否正确
+    if not verify_password(pwd_data.old_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="旧密码错误，请重新输入")
+        
+    # 校验新密码长度（可选，做个简单的安全拦截）
+    if len(pwd_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
+        
+    # 更新密码
+    user.hashed_password = get_password_hash(pwd_data.new_password)
+    db.commit()
+    
+    return {"message": "密码修改成功，请重新登录"}
+
+
+# 10.2 管理员或老板重置他人密码 (admin 和 boss 可用)
+@app.post("/admin/reset-password")
+def admin_reset_other_password(
+    pwd_data: AdminResetPasswordReq, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(RoleChecker(["admin", "boss"])) # 权限拦截
+):
+    # 查找目标用户
+    target_user = db.query(User).filter(User.id == pwd_data.user_id).first()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="目标用户不存在")
+        
+    # 校验新密码长度
+    if len(pwd_data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
+
+    # 权限细化（可选）：老板只能重置店员/自己的密码，不能重置超级管理员的密码
+    if current_user["role"] == "boss" and target_user.role == "admin":
+        raise HTTPException(status_code=403, detail="老板无权重置超级管理员的密码")
+
+    # 直接覆盖密码，不需要验证旧密码
+    target_user.hashed_password = get_password_hash(pwd_data.new_password)
+    db.commit()
+    
+    return {"message": f"已成功重置用户 {target_user.name} 的密码"}
 # ================= 启动入口 =================
 if __name__ == "__main__":
     import uvicorn
