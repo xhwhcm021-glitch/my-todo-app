@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>老板看板 - 今日订货汇总</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; padding: 20px; margin: 0;}
+        .header { display: flex; justify-content: space-between; max-width: 1000px; margin: 0 auto 20px auto; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);}
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { color: #333; margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 10px; display: inline-block;}
+        .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid #007bff; }
+        .stat-card h3 { margin: 0; color: #666; font-size: 14px; }
+        .stat-card .num { font-size: 28px; font-weight: bold; color: #333; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border-bottom: 1px solid #eee; padding: 15px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; color: #555; }
+        .btn { padding: 8px 15px; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;}
+        .btn-logout { background: #dc3545; }
+        .highlight { color: #d9534f; font-weight: bold; font-size: 18px;}
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div><strong>📊 老板决策看板</strong></div>
+    <button class="btn btn-logout" onclick="logout()">退出登录</button>
+</div>
+
+<div class="container">
+    <h2>今日订货总汇总</h2>
+    <div class="stats">
+        <div class="stat-card">
+            <h3>今日日期</h3>
+            <div class="num" id="todayDate">--</div>
+        </div>
+        <div class="stat-card" style="border-left-color: #28a745;">
+            <h3>总订货商品种类</h3>
+            <div class="num" id="totalKinds">--</div>
+        </div>
+    </div>
+
+    <table id="summaryTable">
+        <thead>
+            <tr>
+                <th>商品名称</th>
+                <th>单位</th>
+                <th>今日总订货量</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="3" style="text-align: center;">加载中...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
+    const token = localStorage.getItem('jwt_token');
+
+    if (!token) { window.location.href = 'login.html'; }
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload.role !== 'h' && payload.role !== 'boss_h') {
+            alert("无权访问老板看板"); window.location.href = 'login.html';
+        }
+    } catch (e) { window.location.href = 'login.html'; }
+
+    function logout() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+
+    async function loadSummary() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/boss/daily_summary`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("获取数据失败");
+            
+            const data = await res.json();
+            document.getElementById('todayDate').textContent = data.date;
+            document.getElementById('totalKinds').textContent = data.summary.length;
+            
+            const tbody = document.querySelector('#summaryTable tbody');
+            tbody.innerHTML = '';
+            
+            if (data.summary.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color:#999;">今天还没有人订货</td></tr>`;
+                return;
+            }
+
+            data.summary.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${item.product_name}</strong></td>
+                    <td>${item.unit}</td>
+                    <td class="highlight">${item.total_quantity}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    window.onload = loadSummary;
+</script>
+</body>
+</html>
