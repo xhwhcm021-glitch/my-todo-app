@@ -5,11 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>订货系统 - 店员端</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 html2canvas 用于截图 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* 隐藏数字输入框的箭头 */
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
         .category-tab.active { background-color: #2563eb; color: white; }
+        
+        /* 打印/预览用的隐藏容器 */
+        #printContainer {
+            position: absolute;
+            top: -9999px; /* 移出屏幕外，不影响页面展示 */
+            left: 0;
+            width: 1200px; /* 固定宽度保证截图清晰 */
+            background: #fff;
+            padding: 40px;
+            font-family: "SimSun", "宋体", serif; /* 模拟纸质单据字体 */
+            color: #000;
+        }
+        .print-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; height: 32px; }
+        .print-table th { font-weight: bold; }
+        .print-input { width: 100%; text-align: center; background: transparent; border: none; outline: none; font-size: 16px; font-family: inherit; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col font-sans antialiased text-gray-800">
@@ -47,14 +66,56 @@
         <div class="text-center text-gray-400 py-10">加载中...</div>
     </main>
 
-    <!-- 底部提交按钮 -->
+    <!-- 底部操作区 (预览 + 提交) -->
     <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
-        <button id="submitBtn" onclick="submitOrders()" class="w-full bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400">
-            提交订单
-        </button>
+        <div class="flex space-x-3 w-full">
+            <button onclick="openPreview()" class="w-1/3 bg-white border border-blue-600 text-blue-600 font-bold text-lg py-3.5 rounded-xl active:bg-blue-50 transition-colors">
+                预览
+            </button>
+            <button id="submitBtn" onclick="submitOrders()" class="w-2/3 bg-blue-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                提交订单
+            </button>
+        </div>
     </footer>
 
-    <!-- 密码弹窗 (略去重复的头部) -->
+    <!-- ================= 预览图片全屏弹窗 ================= -->
+    <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex-col">
+        <div class="flex justify-between items-center p-4 bg-black/50 text-white">
+            <span class="text-sm font-medium">长按图片可保存或发送给老板</span>
+            <button onclick="closePreview()" class="text-white bg-white/20 p-2 rounded-full active:bg-white/40">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <!-- 图片缩放容器 -->
+        <div class="flex-1 overflow-auto p-2 flex items-center justify-center">
+            <img id="previewImage" src="" class="max-w-full h-auto object-contain">
+        </div>
+    </div>
+
+    <!-- 隐藏的打印渲染区域 -->
+    <div id="printContainer">
+        <h2 style="text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 30px;" id="printHeader">________店订货单</h2>
+        <div style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 10px;">
+            <div>日期：<span id="printDate"></span></div>
+            <div>订货人：<span id="printStaff"></span></div>
+        </div>
+        
+        <!-- 四列排版区域 -->
+        <div style="display: flex; gap: 10px;">
+            <!-- 左半部分：列1和列2 (带订退存) -->
+            <div style="flex: 1; display: flex; gap: 10px;">
+                <div style="flex: 1;" id="printCol1"></div>
+                <div style="flex: 1;" id="printCol2"></div>
+            </div>
+            <!-- 右半部分：列3和列4 (纯数量) -->
+            <div style="flex: 1; display: flex; gap: 10px;">
+                <div style="flex: 1;" id="printCol3"></div>
+                <div style="flex: 1;" id="printCol4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码弹窗 (代码同前) -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -100,14 +161,12 @@
         let allProducts = [];
         let currentCategory = '全部';
 
-        // 1. 初始化数据
         async function loadProducts() {
             try {
                 const response = await authFetch('/products/active');
                 if (!response.ok) throw new Error("获取失败");
                 allProducts = await response.json();
                 
-                // 提取分类
                 const categories = ['全部', ...new Set(allProducts.map(p => p.category || '其它'))];
                 const tabsContainer = document.getElementById('categoryTabs');
                 tabsContainer.innerHTML = categories.map(cat => `
@@ -122,10 +181,8 @@
             }
         }
 
-        // 2. 切换分类
         function switchCategory(cat) {
             currentCategory = cat;
-            // 更新 UI 高亮
             document.querySelectorAll('.category-tab').forEach(btn => {
                 btn.classList.remove('active', 'bg-blue-600', 'text-white');
                 btn.classList.add('bg-gray-100', 'text-gray-600');
@@ -137,12 +194,10 @@
             renderList();
         }
 
-        // 3. 渲染列表
         function renderList() {
             const keyword = document.getElementById('searchInput').value.trim();
             const mainContainer = document.getElementById('productList');
             
-            // 过滤数据
             const filtered = allProducts.filter(p => {
                 const matchCategory = currentCategory === '全部' || (p.category || '其它') === currentCategory;
                 const matchKeyword = p.name.includes(keyword);
@@ -154,7 +209,6 @@
                 return;
             }
 
-            // 渲染卡片
             mainContainer.innerHTML = filtered.map(p => `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col space-y-2">
                     <div class="flex justify-between items-center">
@@ -179,10 +233,126 @@
             `).join('');
         }
 
+        // ================= 预览图片生成逻辑 =================
+        async function openPreview() {
+            // 1. 收集当前填写的数据
+            const inputs = document.querySelectorAll('input[type="number"]');
+            const inputData = {};
+            inputs.forEach(input => {
+                const val = input.value.trim();
+                if (val !== '') {
+                    const id = input.dataset.id;
+                    const field = input.dataset.field;
+                    if (!inputData[id]) inputData[id] = {};
+                    inputData[id][field] = val;
+                }
+            });
+
+            // 2. 准备渲染容器
+            const today = new Date();
+            const dateStr = `${today.getFullYear()} 年 ${today.getMonth() + 1} 月 ${today.getDate()} 日`;
+            
+            // 尝试从 Token 获取用户名，或者写死
+            let staffName = "店员";
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                staffName = payload.name || "店员";
+            } catch (e) {}
+
+            document.getElementById('printDate').innerText = dateStr;
+            document.getElementById('printStaff').innerText = staffName;
+            document.getElementById('printHeader').innerText = `________店订货单`;
+
+            // 3. 将商品分成 4 列
+            const total = allProducts.length;
+            const split1 = Math.ceil(total / 4);
+            const split2 = Math.ceil(total / 2);
+            const split3 = Math.ceil((total * 3) / 4);
+            
+            const cols = [
+                allProducts.slice(0, split1),
+                allProducts.slice(split1, split2),
+                allProducts.slice(split2, split3),
+                allProducts.slice(split3, total)
+            ];
+
+            // 4. 构建表格 HTML
+            const buildTable = (products, isFirstTwoCols) => {
+                let html = `<table class="print-table"><thead><tr><th>品名</th>`;
+                if (isFirstTwoCols) {
+                    html += `<th>订货量</th><th>退货</th><th>库存</th>`;
+                } else {
+                    html += `<th>数量</th>`;
+                }
+                html += `</tr></thead><tbody>`;
+
+                products.forEach(p => {
+                    const data = inputData[p.id] || {};
+                    const q = data.quantity || '';
+                    const r = data.return_quantity || '';
+                    const s = data.stock_quantity || '';
+
+                    html += `<tr><td>${p.name}</td>`;
+                    if (isFirstTwoCols) {
+                        html += `<td>${q}</td><td>${r}</td><td>${s}</td>`;
+                    } else {
+                        html += `<td>${q}</td>`;
+                    }
+                    html += `</tr>`;
+                });
+
+                // 如果某列商品较少，补空行保持表格高度一致
+                const maxRows = Math.ceil(total / 4);
+                for (let i = products.length; i < maxRows; i++) {
+                    html += `<tr><td>&nbsp;</td>`;
+                    if (isFirstTwoCols) html += `<td></td><td></td><td></td>`;
+                    else html += `<td></td>`;
+                    html += `</tr>`;
+                }
+
+                html += `</tbody></table>`;
+                return html;
+            };
+
+            document.getElementById('printCol1').innerHTML = buildTable(cols[0], true);
+            document.getElementById('printCol2').innerHTML = buildTable(cols[1], true);
+            document.getElementById('printCol3').innerHTML = buildTable(cols[2], false);
+            document.getElementById('printCol4').innerHTML = buildTable(cols[3], false);
+
+            // 5. 显示加载状态并截图
+            const previewModal = document.getElementById('previewModal');
+            const img = document.getElementById('previewImage');
+            img.src = ''; // 清空旧图
+            previewModal.classList.remove('hidden');
+            previewModal.classList.add('flex');
+            
+            // 使用 html2canvas 渲染
+            const printContainer = document.getElementById('printContainer');
+            setTimeout(async () => {
+                try {
+                    const canvas = await html2canvas(printContainer, { 
+                        scale: 2, // 高清
+                        useCORS: true,
+                        backgroundColor: '#ffffff'
+                    });
+                    img.src = canvas.toDataURL('image/jpeg', 0.9);
+                } catch (err) {
+                    alert("图片生成失败，请重试");
+                    closePreview();
+                }
+            }, 300); // 稍微延迟一下等字体渲染
+        }
+
+        function closePreview() {
+            const previewModal = document.getElementById('previewModal');
+            previewModal.classList.add('hidden');
+            previewModal.classList.remove('flex');
+        }
+
         // ================= 提交逻辑 =================
         async function submitOrders() {
             const inputs = document.querySelectorAll('input[type="number"]');
-            const orderMap = {}; // 用 Map 来汇总同一个商品的数据
+            const orderMap = {}; 
 
             inputs.forEach(input => {
                 const val = parseFloat(input.value);
@@ -212,7 +382,6 @@
                 if (!response.ok) throw new Error(data.detail || "提交失败");
                 
                 alert(data.message || "提交成功！");
-                // 清空已填写的数量
                 inputs.forEach(input => input.value = '');
 
             } catch (error) {
