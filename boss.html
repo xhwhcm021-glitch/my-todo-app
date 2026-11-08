@@ -2,238 +2,328 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>老板看板 - 数据汇总</title>
-    <!-- 引入 TailwindCSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隐藏滚动条 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans antialiased text-gray-800">
+<body class="bg-gray-100 h-screen flex flex-col font-sans antialiased text-gray-800">
 
-    <!-- 1. 顶部导航栏 -->
-    <header class="bg-white shadow-sm sticky top-0 z-10">
-        <div class="max-w-4xl mx-auto px-4 h-16 flex justify-between items-center">
+    <!-- 顶部控制台 (粘性) -->
+    <header class="bg-white shadow-sm sticky top-0 z-30 pt-3 pb-2 px-4 space-y-3">
+        <!-- 第一行：标题与操作 -->
+        <div class="flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <span class="text-2xl">📊</span>
-                <h1 class="text-xl font-bold text-gray-800 tracking-wide">老板决策看板</h1>
+                <h1 class="text-lg font-bold text-gray-800 tracking-wide">老板决策看板</h1>
             </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors">
-                    改密
-                </button>
-                <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors">
-                    退出
-                </button>
+            <div class="flex items-center space-x-2">
+                <button onclick="showPasswordModal()" class="text-xs text-blue-600 font-medium px-2 py-1.5 rounded-md bg-blue-50">改密</button>
+                <button onclick="logout()" class="text-xs text-red-500 font-medium px-2 py-1.5 rounded-md bg-red-50">退出</button>
             </div>
+        </div>
+
+        <!-- 第二行：日期、门店、全显、筛选 -->
+        <div class="flex items-center space-x-2 overflow-x-auto hide-scrollbar pb-1">
+            <!-- 日期选择 -->
+            <div class="relative shrink-0">
+                <input type="date" id="datePicker" onchange="loadSummary()" class="pl-8 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                    <span class="text-gray-400 text-sm">📅</span>
+                </div>
+            </div>
+
+            <!-- 门店下拉 -->
+            <div class="relative shrink-0">
+                <select id="shopSelect" onchange="loadSummary()" class="pl-8 pr-6 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
+                    <option value="">全部门店</option>
+                </select>
+                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                    <span class="text-gray-400 text-sm">🏪</span>
+                </div>
+                <!-- 下拉箭头 -->
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </div>
+
+            <!-- 全显按钮 -->
+            <button onclick="resetToAll()" class="shrink-0 bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium active:bg-gray-200">
+                🔄 全显
+            </button>
+
+            <!-- 筛选按钮 -->
+            <button onclick="openFilter()" class="shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium active:bg-indigo-700 flex items-center">
+                🎛️ 筛选
+            </button>
         </div>
     </header>
 
-    <!-- 2. 主体内容 -->
-    <main class="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        
-        <!-- 数据概览卡片 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">今日日期</p>
-                    <h2 class="text-2xl font-bold text-gray-800" id="todayDate">加载中...</h2>
-                </div>
-                <div class="p-3 bg-blue-50 rounded-xl text-blue-500">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-1">总订货种类</p>
-                    <h2 class="text-2xl font-bold text-green-600"><span id="totalKinds">0</span> <span class="text-sm font-normal text-gray-400">种</span></h2>
-                </div>
-                <div class="p-3 bg-green-50 rounded-xl text-green-500">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                </div>
-            </div>
-        </div>
-
-        <!-- 数据表格 -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 class="font-bold text-gray-800">今日订货明细汇总</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="text-sm text-gray-500 bg-gray-50">
-                            <th class="px-6 py-4 font-medium">商品名称</th>
-                            <th class="px-6 py-4 font-medium">单位</th>
-                            <th class="px-6 py-4 font-medium text-right">订货总量</th>
-                        </tr>
-                    </thead>
-                    <tbody id="summaryTableBody" class="divide-y divide-gray-100">
-                        <tr>
-                            <td colspan="3" class="px-6 py-10 text-center text-gray-400">
-                                <svg class="animate-spin h-6 w-6 text-blue-500 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                加载数据中...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- 主体内容 (卡片列表) -->
+    <main id="summaryList" class="flex-1 overflow-y-auto p-4 space-y-3 pb-10">
+        <div class="text-center text-gray-400 py-10">加载中...</div>
     </main>
 
-    <!-- 3. 修改密码弹窗 (复用标准设计) -->
+    <!-- ================= 全屏筛选面板 ================= -->
+    <div id="filterPanel" class="fixed inset-0 bg-white z-50 flex flex-col transform translate-y-full transition-transform duration-300">
+        <!-- 面板头部 -->
+        <div class="px-4 h-14 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
+            <h2 class="text-lg font-bold text-gray-800">选择要查看的商品</h2>
+            <button onclick="closeFilter()" class="text-gray-500 text-sm font-medium px-3 py-1.5 bg-gray-100 rounded-md">取消</button>
+        </div>
+        <!-- 快捷操作 -->
+        <div class="px-4 py-2 bg-gray-50 flex space-x-3 border-b border-gray-200 shrink-0">
+            <button onclick="selectAllProducts(true)" class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm">全选</button>
+            <button onclick="selectAllProducts(false)" class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm">全不选</button>
+        </div>
+        <!-- 商品列表 (按分类) -->
+        <div id="filterList" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- JS 动态渲染 -->
+        </div>
+        <!-- 面板底部保存按钮 -->
+        <div class="p-4 bg-white border-t border-gray-200 shrink-0">
+            <button onclick="saveFilter()" class="w-full bg-indigo-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-indigo-700">
+                保存并查看
+            </button>
+        </div>
+    </div>
+
+    <!-- 密码弹窗 (略去重复样式，直接复用) -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
-                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label>
-                    <input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="请输入当前密码">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
-                    <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="至少 6 位新密码">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
-                    <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="再次输入新密码">
-                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
-                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">确认修改</button>
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">确认修改</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. JS 逻辑 -->
     <script>
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
 
-        // 鉴权守卫
+        // 全局状态
+        let globalShops = [];
+        let allProducts = []; // 用于筛选面板
+        let summaryData = []; // 从后端拿到的汇总数据
+        let selectedProductIds = []; // 用户勾选的商品ID
+
+        // 1. 鉴权守卫
         if (!token) { window.location.href = 'login.html'; }
         try {
             const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-            if (payload.role !== 'boss') {
-                alert("无权访问老板看板");
-                window.location.href = 'login.html';
-            }
+            if (payload.role !== 'boss') { alert("无权访问"); window.location.href = 'login.html'; }
         } catch (e) { window.location.href = 'login.html'; }
 
-        function logout() {
-            localStorage.removeItem('jwt_token');
-            window.location.href = 'login.html';
+        function logout() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+
+        async function apiFetch(endpoint) {
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error("网络请求失败");
+            return await res.json();
         }
 
-        // 加载数据
-        async function loadSummary() {
+        // ================= 初始化 =================
+        window.onload = async () => {
+            // 初始化日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('datePicker').value = today;
+
+            // 加载本地记住的筛选 ID
+            const savedIds = localStorage.getItem('boss_filter_ids');
+            if (savedIds) {
+                selectedProductIds = JSON.parse(savedIds);
+            }
+
             try {
-                const response = await fetch(`${API_BASE_URL}/boss/daily_summary`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                // 拉取门店列表
+                globalShops = await apiFetch('/boss/shops');
+                const shopSelect = document.getElementById('shopSelect');
+                globalShops.forEach(s => {
+                    shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
                 });
-                if (!response.ok) throw new Error("获取数据失败");
-                
-                const data = await response.json();
-                
-                document.getElementById('todayDate').textContent = data.date;
-                document.getElementById('totalKinds').textContent = data.summary.length;
-                
-                const tbody = document.getElementById('summaryTableBody');
-                tbody.innerHTML = '';
-                
-                if (data.summary.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-gray-400">今天还没有人订货哦</td></tr>`;
-                    return;
+
+                // 拉取所有商品（用于筛选面板）
+                allProducts = await apiFetch('/products/active');
+
+                // 如果之前没保存过筛选，默认全选
+                if (selectedProductIds.length === 0 && savedIds === null) {
+                    selectedProductIds = allProducts.map(p => p.id);
                 }
 
-                data.summary.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50 transition-colors";
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-medium text-gray-800">${item.product_name}</td>
-                        <td class="px-6 py-4 text-gray-500 text-sm">${item.unit}</td>
-                        <td class="px-6 py-4 text-right">
-                            <span class="inline-flex items-center justify-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
-                                ${item.total_quantity}
-                            </span>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                document.getElementById('summaryTableBody').innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-red-500">${error.message}</td></tr>`;
+                // 加载看板数据
+                loadSummary();
+            } catch (e) {
+                document.getElementById('summaryList').innerHTML = `<div class="text-center text-red-500 mt-10">初始化失败: ${e.message}</div>`;
+            }
+        };
+
+        // ================= 加载与渲染看板 =================
+        async function loadSummary() {
+            const date = document.getElementById('datePicker').value;
+            const shopId = document.getElementById('shopSelect').value;
+            const mainContainer = document.getElementById('summaryList');
+            mainContainer.innerHTML = `<div class="text-center text-gray-400 py-10">加载中...</div>`;
+
+            let url = `/boss/daily_summary?query_date=${date}`;
+            if (shopId) url += `&shop_id=${shopId}`;
+
+            try {
+                const data = await apiFetch(url);
+                summaryData = data.summary;
+                renderSummary();
+            } catch (e) {
+                mainContainer.innerHTML = `<div class="text-center text-red-500 py-10">${e.message}</div>`;
             }
         }
 
-        // ================= 修改密码相关逻辑 =================
+        function renderSummary() {
+            const mainContainer = document.getElementById('summaryList');
+            
+            // 根据勾选的 ID 过滤数据
+            const displayData = summaryData.filter(item => selectedProductIds.includes(item.product_id));
+
+            if (displayData.length === 0) {
+                mainContainer.innerHTML = `<div class="text-center text-gray-400 py-10 bg-white rounded-xl">暂无数据或未勾选任何商品</div>`;
+                return;
+            }
+
+            mainContainer.innerHTML = displayData.map(item => `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-base font-bold text-gray-800">${item.product_name}</span>
+                        <span class="text-xs text-gray-400 mt-1">单位: ${item.unit}</span>
+                    </div>
+                    <div class="flex space-x-4 text-right">
+                        <div class="flex flex-col items-center">
+                            <span class="text-[10px] text-gray-500">订货</span>
+                            <span class="text-lg font-bold text-blue-600">${item.total_quantity}</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="text-[10px] text-gray-500">退货</span>
+                            <span class="text-lg font-bold text-orange-500">${item.total_return}</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="text-[10px] text-gray-500">库存</span>
+                            <span class="text-lg font-bold text-green-600">${item.total_stock}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 全显按钮逻辑
+        function resetToAll() {
+            document.getElementById('shopSelect').value = "";
+            loadSummary();
+        }
+
+        // ================= 筛选面板逻辑 =================
+        const filterPanel = document.getElementById('filterPanel');
+
+        function openFilter() {
+            renderFilterList();
+            // 从底部滑出
+            filterPanel.classList.remove('translate-y-full');
+        }
+
+        function closeFilter() {
+            // 退回底部
+            filterPanel.classList.add('translate-y-full');
+        }
+
+        function renderFilterList() {
+            const container = document.getElementById('filterList');
+            // 按分类分组
+            const grouped = allProducts.reduce((acc, p) => {
+                const cat = p.category || '其它';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(p);
+                return acc;
+            }, {});
+
+            let html = '';
+            for (const [category, products] of Object.entries(grouped)) {
+                html += `
+                    <div>
+                        <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">${category}</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${products.map(p => {
+                                const isChecked = selectedProductIds.includes(p.id) ? 'checked' : '';
+                                return `
+                                    <label class="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-100 text-sm active:bg-gray-100">
+                                        <input type="checkbox" value="${p.id}" ${isChecked} class="filter-checkbox w-4 h-4 text-indigo-600 rounded">
+                                        <span class="truncate text-gray-700">${p.name}</span>
+                                    </label>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function selectAllProducts(isSelectAll) {
+            const checkboxes = document.querySelectorAll('.filter-checkbox');
+            checkboxes.forEach(cb => cb.checked = isSelectAll);
+        }
+
+        function saveFilter() {
+            const checkboxes = document.querySelectorAll('.filter-checkbox');
+            const newSelectedIds = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) newSelectedIds.push(parseInt(cb.value));
+            });
+
+            // 如果啥都没选，就强制全选（防止老板自己把数据看空了）
+            if (newSelectedIds.length === 0) {
+                selectedProductIds = allProducts.map(p => p.id);
+                alert("您未勾选任何商品，已自动为您全选。");
+            } else {
+                selectedProductIds = newSelectedIds;
+            }
+
+            // 保存到本地
+            localStorage.setItem('boss_filter_ids', JSON.stringify(selectedProductIds));
+            
+            // 关闭面板并重新渲染
+            closeFilter();
+            renderSummary();
+        }
+
+        // ================= 修改密码逻辑 =================
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
-
-        function showPasswordModal() {
-            document.getElementById('oldPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
-            pwdErrorMsg.classList.add('hidden');
-            pwdModal.classList.remove('hidden');
-        }
-
-        function hidePasswordModal() {
-            pwdModal.classList.add('hidden');
-        }
-
+        function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
+        function hidePasswordModal() { pwdModal.classList.add('hidden'); }
         async function submitChangePassword() {
-            const oldPwd = document.getElementById('oldPassword').value;
-            const newPwd = document.getElementById('newPassword').value;
-            const confirmPwd = document.getElementById('confirmPassword').value;
-            const btn = document.getElementById('submitPwdBtn');
-
-            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写所有密码框");
-            if (newPwd.length < 6) return showPwdError("新密码不能少于 6 位");
-            if (newPwd !== confirmPwd) return showPwdError("两次输入的新密码不一致");
-
-            btn.disabled = true;
-            btn.textContent = "提交中...";
-            pwdErrorMsg.classList.add('hidden');
-
+            const oldPwd = document.getElementById('oldPassword').value; const newPwd = document.getElementById('newPassword').value; const confirmPwd = document.getElementById('confirmPassword').value; const btn = document.getElementById('submitPwdBtn');
+            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写完整");
+            if (newPwd.length < 6) return showPwdError("新密码至少6位");
+            if (newPwd !== confirmPwd) return showPwdError("两次密码不一致");
+            btn.disabled = true; btn.textContent = "提交中..."; pwdErrorMsg.classList.add('hidden');
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
-                });
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) });
                 const data = await res.json();
-
-                if (res.ok) {
-                    alert("密码修改成功！请重新登录。");
-                    localStorage.removeItem('jwt_token');
-                    window.location.href = 'login.html';
-                } else {
-                    showPwdError(data.detail || "修改失败，请检查旧密码");
-                }
-            } catch (error) {
-                showPwdError("网络错误，请稍后再试");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "确认修改";
-            }
+                if (res.ok) { alert("修改成功，请重新登录"); localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; } else { showPwdError(data.detail || "修改失败"); }
+            } catch (error) { showPwdError("网络错误"); } finally { btn.disabled = false; btn.textContent = "确认修改"; }
         }
-
-        function showPwdError(msg) {
-            pwdErrorMsg.textContent = msg;
-            pwdErrorMsg.classList.remove('hidden');
-        }
-
-        // 初始化
-        window.onload = loadSummary;
+        function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
     </script>
 </body>
 </html>

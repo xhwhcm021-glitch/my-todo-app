@@ -49,7 +49,7 @@ class Product(Base):
     name = Column(String(100), nullable=False)
     unit = Column(String(20), nullable=False)
     category = Column(String(50), default='其它')
-    sort_order = Column(Integer, default=0) # 🌟 新增：排序权重
+    sort_order = Column(Integer, default=0) # 排序权重
     is_active = Column(Boolean, default=True)
     orders = relationship("Order", back_populates="product")
 
@@ -188,7 +188,7 @@ def seed_data(db: Session = Depends(get_db)):
     if not db.query(User).filter(User.name == "staff1").first():
         db.add(User(name="staff1", role="staff", shop_id=shop_dong.id, hashed_password=get_password_hash("123456")))
     db.commit()
-    return {"message": "初始化成功"}
+    return {"message": "初始化成功！账号: admin, boss, staff1，密码均为 123456"}
 
 # ================= 7. 密码管理接口 =================
 @app.post("/auth/change-password")
@@ -214,7 +214,7 @@ def admin_reset_other_password(pwd_data: AdminResetPasswordReq, db: Session = De
 # ================= 8. 店员接口 =================
 @app.get("/products/active")
 def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    # 🌟 升级：按照 sort_order 排序，若相同则按 ID 排序
+    # 按 sort_order 升序排序返回
     return db.query(Product).filter(Product.is_active == True).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/orders/batch")
@@ -229,6 +229,7 @@ def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depend
                 user_id=current_user["user_id"], product_id=item.product_id, order_date=today, 
                 quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity
             )
+            # 覆盖模式：同一天同类商品直接更新数量，不累加
             stmt = stmt.on_conflict_do_update(
                 index_elements=['user_id', 'order_date', 'product_id'], 
                 set_=dict(quantity=stmt.excluded.quantity, return_quantity=stmt.excluded.return_quantity, stock_quantity=stmt.excluded.stock_quantity)
@@ -241,15 +242,58 @@ def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depend
         raise HTTPException(status_code=500, detail=str(e))
 
 # ================= 9. 老板接口 =================
-@app.get("/boss/daily_summary")
-def get_daily_summary(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    today = date.today()
-    results = db.query(
-        Product.name.label("product_name"), Product.unit.label("unit"), 
-        func.sum(Order.quantity).label("total_quantity"), func.sum(Order.return_quantity).label("total_return"), func.sum(Order.stock_quantity).label("total_stock")
-    ).join(Order, Product.id == Order.product_id).filter(Order.order_date == today).group_by(Product.id, Product.name, Product.unit).all()
+@app.get("/boss/shops")
+def boss_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
+    """获取所有门店列表（供老板端下拉框使用）"""
+    return db.query(Shop).all()
 
-    return {"date": str(today), "summary": [{"product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
+@app.get("/boss/daily_summary")
+def get_daily_summary(
+    query_date: Optional[str] = None,  # 格式 YYYY-MM-DD
+    shop_id: Optional[int] = None,     # 门店 ID
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(RoleChecker(["boss"]))
+):
+    # 1. 解析日期，默认今天
+    if query_date:
+        try:
+            target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="日期格式错误，应为 YYYY-MM-DD")
+    else:
+        target_date = date.today()
+
+    # 2. 构建基础查询
+    query = db.query(
+        Product.id.label("product_id"),
+        Product.name.label("product_name"), 
+        Product.unit.label("unit"), 
+        func.sum(Order.quantity).label("total_quantity"),
+        func.sum(Order.return_quantity).label("total_return"),
+        func.sum(Order.stock_quantity).label("total_stock")
+    ).join(Order, Product.id == Order.product_id).filter(Order.order_date == target_date)
+
+    # 3. 如果传了门店 ID，则按门店过滤
+    if shop_id:
+        query = query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
+
+    # 4. 按商品分组汇总
+    results = query.group_by(Product.id, Product.name, Product.unit).all()
+
+    return {
+        "date": str(target_date), 
+        "shop_id": shop_id,
+        "summary": [
+            {
+                "product_id": r.product_id,
+                "product_name": r.product_name, 
+                "unit": r.unit, 
+                "total_quantity": float(r.total_quantity or 0), 
+                "total_return": float(r.total_return or 0), 
+                "total_stock": float(r.total_stock or 0)
+            } for r in results
+        ]
+    }
 
 # ================= 10. 管理员接口 =================
 @app.get("/admin/shops")
@@ -291,18 +335,15 @@ def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user:
 
 @app.get("/admin/products")
 def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    # 返回所有商品，按排序返回
     return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/admin/products")
 def admin_create_product(product_data: ProductCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    # 新增的商品默认排在最后
     max_order = db.query(func.max(Product.sort_order)).scalar() or 0
     db.add(Product(name=product_data.name, unit=product_data.unit, category=product_data.category, sort_order=max_order + 1, is_active=True))
     db.commit()
     return {"message": "商品新增成功"}
 
-# 🌟 新增：拖拽排序保存接口
 @app.post("/admin/products/sort")
 def admin_sort_products(sort_data: SortRequest, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     for index, product_id in enumerate(sort_data.product_ids):
@@ -359,6 +400,7 @@ def admin_delete_order(order_id: int, db: Session = Depends(get_db), current_use
     db.delete(order); db.commit()
     return {"message": "订单已删除"}
 
+# ================= 启动入口 =================
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
