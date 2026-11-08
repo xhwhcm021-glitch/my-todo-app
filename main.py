@@ -40,7 +40,6 @@ class User(Base):
     role = Column(String(50), nullable=False)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
     is_active = Column(Boolean, default=True)
-    
     shop = relationship("Shop", back_populates="users")
     orders = relationship("Order", back_populates="user")
 
@@ -49,9 +48,9 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     unit = Column(String(20), nullable=False)
-    category = Column(String(50), default='其它') # 🌟 新增：分类字段
+    category = Column(String(50), default='其它')
+    sort_order = Column(Integer, default=0) # 🌟 新增：排序权重
     is_active = Column(Boolean, default=True)
-    
     orders = relationship("Order", back_populates="product")
 
 class Order(Base):
@@ -60,11 +59,9 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     order_date = Column(Date, nullable=False, default=date.today)
-    
-    quantity = Column(Numeric(12, 2), nullable=False, default=0)          # 订货量
-    return_quantity = Column(Numeric(12, 2), nullable=False, default=0)   # 🌟 新增：退货量
-    stock_quantity = Column(Numeric(12, 2), nullable=False, default=0)    # 🌟 新增：库存量
-    
+    quantity = Column(Numeric(12, 2), nullable=False, default=0)
+    return_quantity = Column(Numeric(12, 2), nullable=False, default=0)
+    stock_quantity = Column(Numeric(12, 2), nullable=False, default=0)
     remark = Column(String(200))
     user = relationship("User", back_populates="orders")
     product = relationship("Product", back_populates="orders")
@@ -126,8 +123,8 @@ class UserLogin(BaseModel):
 class OrderItemCreate(BaseModel):
     product_id: int
     quantity: float = 0
-    return_quantity: float = 0  # 🌟 新增
-    stock_quantity: float = 0   # 🌟 新增
+    return_quantity: float = 0
+    stock_quantity: float = 0
 
 class RoleUpdate(BaseModel):
     role: str
@@ -165,16 +162,16 @@ class OrderUpdate(BaseModel):
 class ShopCreate(BaseModel):
     name: str
 
+class SortRequest(BaseModel):
+    product_ids: List[int]
+
 # ================= 6. 登录与初始化 =================
 @app.post("/login")
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.name == user_data.name).first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
-    
-    access_token = create_access_token(data={
-        "user_id": user.id, "role": user.role, "shop_id": user.shop_id
-    })
+    access_token = create_access_token(data={"user_id": user.id, "role": user.role, "shop_id": user.shop_id})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/seed_data")
@@ -191,7 +188,7 @@ def seed_data(db: Session = Depends(get_db)):
     if not db.query(User).filter(User.name == "staff1").first():
         db.add(User(name="staff1", role="staff", shop_id=shop_dong.id, hashed_password=get_password_hash("123456")))
     db.commit()
-    return {"message": "初始化成功！账号: admin, boss, staff1，密码均为 123456"}
+    return {"message": "初始化成功"}
 
 # ================= 7. 密码管理接口 =================
 @app.post("/auth/change-password")
@@ -199,8 +196,7 @@ def change_my_password(pwd_data: ChangePasswordReq, db: Session = Depends(get_db
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not verify_password(pwd_data.old_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="旧密码错误")
-    if len(pwd_data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
+    if len(pwd_data.new_password) < 6: raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
     user.hashed_password = get_password_hash(pwd_data.new_password)
     db.commit()
     return {"message": "密码修改成功"}
@@ -209,17 +205,17 @@ def change_my_password(pwd_data: ChangePasswordReq, db: Session = Depends(get_db
 def admin_reset_other_password(pwd_data: AdminResetPasswordReq, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin", "boss"]))):
     target_user = db.query(User).filter(User.id == pwd_data.user_id).first()
     if not target_user: raise HTTPException(status_code=404, detail="用户不存在")
-    if len(pwd_data.new_password) < 6: raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
     if current_user["role"] == "boss" and target_user.role == "admin":
         raise HTTPException(status_code=403, detail="老板无权重置超级管理员密码")
     target_user.hashed_password = get_password_hash(pwd_data.new_password)
     db.commit()
-    return {"message": f"已成功重置 {target_user.name} 的密码"}
+    return {"message": "密码重置成功"}
 
 # ================= 8. 店员接口 =================
 @app.get("/products/active")
 def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    return db.query(Product).filter(Product.is_active == True).all()
+    # 🌟 升级：按照 sort_order 排序，若相同则按 ID 排序
+    return db.query(Product).filter(Product.is_active == True).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/orders/batch")
 def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
@@ -233,14 +229,9 @@ def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depend
                 user_id=current_user["user_id"], product_id=item.product_id, order_date=today, 
                 quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity
             )
-            # 🌟 关键修改：覆盖模式。set_=dict(quantity=stmt.excluded.quantity, ...)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['user_id', 'order_date', 'product_id'], 
-                set_=dict(
-                    quantity=stmt.excluded.quantity, 
-                    return_quantity=stmt.excluded.return_quantity,
-                    stock_quantity=stmt.excluded.stock_quantity
-                )
+                set_=dict(quantity=stmt.excluded.quantity, return_quantity=stmt.excluded.return_quantity, stock_quantity=stmt.excluded.stock_quantity)
             )
             db.execute(stmt)
         db.commit()
@@ -253,25 +244,12 @@ def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depend
 @app.get("/boss/daily_summary")
 def get_daily_summary(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
     today = date.today()
-    # 🌟 升级：汇总订货、退货、库存
     results = db.query(
-        Product.name.label("product_name"), 
-        Product.unit.label("unit"), 
-        func.sum(Order.quantity).label("total_quantity"),
-        func.sum(Order.return_quantity).label("total_return"),
-        func.sum(Order.stock_quantity).label("total_stock")
-    ).join(Order, Product.id == Order.product_id)\
-     .filter(Order.order_date == today)\
-     .group_by(Product.id, Product.name, Product.unit).all()
+        Product.name.label("product_name"), Product.unit.label("unit"), 
+        func.sum(Order.quantity).label("total_quantity"), func.sum(Order.return_quantity).label("total_return"), func.sum(Order.stock_quantity).label("total_stock")
+    ).join(Order, Product.id == Order.product_id).filter(Order.order_date == today).group_by(Product.id, Product.name, Product.unit).all()
 
-    return {"date": str(today), "summary": [
-        {
-            "product_name": r.product_name, "unit": r.unit, 
-            "total_quantity": float(r.total_quantity or 0), 
-            "total_return": float(r.total_return or 0),
-            "total_stock": float(r.total_stock or 0)
-        } for r in results
-    ]}
+    return {"date": str(today), "summary": [{"product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
 
 # ================= 10. 管理员接口 =================
 @app.get("/admin/shops")
@@ -313,13 +291,24 @@ def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user:
 
 @app.get("/admin/products")
 def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    return db.query(Product).all()
+    # 返回所有商品，按排序返回
+    return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/admin/products")
 def admin_create_product(product_data: ProductCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    db.add(Product(name=product_data.name, unit=product_data.unit, category=product_data.category, is_active=True))
+    # 新增的商品默认排在最后
+    max_order = db.query(func.max(Product.sort_order)).scalar() or 0
+    db.add(Product(name=product_data.name, unit=product_data.unit, category=product_data.category, sort_order=max_order + 1, is_active=True))
     db.commit()
     return {"message": "商品新增成功"}
+
+# 🌟 新增：拖拽排序保存接口
+@app.post("/admin/products/sort")
+def admin_sort_products(sort_data: SortRequest, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    for index, product_id in enumerate(sort_data.product_ids):
+        db.query(Product).filter(Product.id == product_id).update({"sort_order": index})
+    db.commit()
+    return {"message": "排序已保存"}
 
 @app.put("/admin/products/{product_id}")
 def admin_update_product(product_id: int, prod_data: ProductUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -349,8 +338,7 @@ def admin_get_orders(db: Session = Depends(get_db), current_user: dict = Depends
     results = db.query(
         Order.id, User.name.label("user_name"), Product.name.label("product_name"), 
         Order.quantity, Order.return_quantity, Order.stock_quantity, Order.order_date
-    ).join(User, Order.user_id == User.id).join(Product, Order.product_id == Product.id)\
-     .order_by(Order.order_date.desc(), Order.id.desc()).all()
+    ).join(User, Order.user_id == User.id).join(Product, Order.product_id == Product.id).order_by(Order.order_date.desc(), Order.id.desc()).all()
     return [{"id": r.id, "user_name": r.user_name, "product_name": r.product_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity), "date": str(r.order_date)} for r in results]
 
 @app.put("/admin/orders/{order_id}")
@@ -360,9 +348,7 @@ def admin_update_order(order_id: int, order_data: OrderUpdate, db: Session = Dep
     if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0:
         db.delete(order)
     else:
-        order.quantity = order_data.quantity
-        order.return_quantity = order_data.return_quantity
-        order.stock_quantity = order_data.stock_quantity
+        order.quantity = order_data.quantity; order.return_quantity = order_data.return_quantity; order.stock_quantity = order_data.stock_quantity
     db.commit()
     return {"message": "订单已修改"}
 
@@ -373,7 +359,6 @@ def admin_delete_order(order_id: int, db: Session = Depends(get_db), current_use
     db.delete(order); db.commit()
     return {"message": "订单已删除"}
 
-# ================= 启动入口 =================
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))

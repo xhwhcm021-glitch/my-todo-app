@@ -5,132 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理员后台 - 订货系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入拖拽库 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col md:flex-row font-sans antialiased text-gray-800 overflow-hidden">
 
-    <!-- ================= 1. 左侧侧边栏 (电脑端固定，手机端顶部) ================= -->
+    <!-- 左侧侧边栏 -->
     <aside class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-sm md:shadow-none">
-        
-        <!-- Logo 区 -->
         <div class="h-16 flex items-center px-6 border-b border-gray-100 hidden md:flex">
             <span class="text-2xl mr-2">⚙️</span>
             <h1 class="text-lg font-bold text-gray-800 tracking-wide">管理员控制台</h1>
         </div>
-
-        <!-- 导航菜单 -->
         <nav class="flex md:flex-col overflow-x-auto md:overflow-x-hidden p-2 md:p-4 gap-2 flex-1">
             <button onclick="switchTab('users')" id="nav-users" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                 用户与门店
             </button>
             <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                商品管理
+                商品管理 (可拖拽)
             </button>
             <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 订单管理
             </button>
         </nav>
     </aside>
 
-    <!-- ================= 2. 右侧主内容区 ================= -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
-        <!-- 顶部操作栏 (改密、退出) -->
         <header class="bg-white h-16 border-b border-gray-200 flex items-center justify-end px-6 shrink-0">
             <div class="flex items-center space-x-3">
-                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors">修改密码</button>
-                <button onclick="logout()" class="text-sm text-red-500 font-medium px-4 py-2 rounded-lg hover:bg-red-50 transition-colors">退出登录</button>
+                <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-4 py-2 rounded-lg hover:bg-blue-50">修改密码</button>
+                <button onclick="logout()" class="text-sm text-red-500 font-medium px-4 py-2 rounded-lg hover:bg-red-50">退出登录</button>
             </div>
         </header>
 
-        <!-- 内容滚动区 -->
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto">
-
-                <!-- 模块 1：用户与门店管理 -->
+                
+                <!-- 模块 1：用户与门店 -->
                 <div id="content-users" class="space-y-6">
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">用户与门店</h2>
-                            <p class="text-sm text-gray-500 mt-1">管理系统的登录账号和所属门店</p>
-                        </div>
-                    </div>
-
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- 新增门店 -->
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                             <h3 class="font-bold text-gray-700 mb-4">新增门店</h3>
                             <div class="flex gap-3">
-                                <input type="text" id="newShopName" placeholder="门店名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <button onclick="createShop()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium transition-colors">添加</button>
+                                <input type="text" id="newShopName" placeholder="门店名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <button onclick="createShop()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium">添加</button>
                             </div>
                         </div>
-
-                        <!-- 新增用户 -->
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                             <h3 class="font-bold text-gray-700 mb-4">新增用户</h3>
                             <div class="space-y-3">
                                 <div class="flex gap-3">
-                                    <input type="text" id="u-name" placeholder="账号" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <input type="password" id="u-pass" placeholder="密码" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <input type="text" id="u-name" placeholder="账号" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                    <input type="password" id="u-pass" placeholder="密码" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                                 </div>
                                 <div class="flex gap-3">
-                                    <select id="u-role" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <select id="u-role" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                                         <option value="staff">店员 (staff)</option>
                                         <option value="boss">老板 (boss)</option>
                                         <option value="admin">管理员 (admin)</option>
                                     </select>
-                                    <select id="u-shop" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <select id="u-shop" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                                         <option value="">-- 不绑定门店 --</option>
                                     </select>
                                 </div>
-                                <button onclick="createUser()" class="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-medium transition-colors">创建账号</button>
+                                <button onclick="createUser()" class="w-full bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-medium">创建账号</button>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 用户列表 -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <table class="w-full text-left">
-                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-6 py-4 font-medium">ID / 用户名</th>
-                                    <th class="px-6 py-4 font-medium">角色</th>
-                                    <th class="px-6 py-4 font-medium">所属门店</th>
-                                    <th class="px-6 py-4 font-medium text-right">操作</th>
-                                </tr>
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                                <tr><th class="px-6 py-4">ID / 用户名</th><th class="px-6 py-4">角色</th><th class="px-6 py-4">所属门店</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
                             <tbody id="userTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- 模块 2：商品管理 -->
+                <!-- 模块 2：商品管理 (拖拽版) -->
                 <div id="content-products" class="space-y-6 hidden">
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">商品管理</h2>
-                            <p class="text-sm text-gray-500 mt-1">管理订货系统里的商品字典</p>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-end">
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-500 mb-1">商品名称</label>
+                            <input type="text" id="p-name" placeholder="商品名称" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                         </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-3">
-                        <input type="text" id="p-name" placeholder="商品名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="text" id="p-unit" placeholder="单位 (如: 斤 / 箱)" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button onclick="createProduct()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium transition-colors">新增商品</button>
+                        <div class="w-32">
+                            <label class="block text-xs text-gray-500 mb-1">单位 (如: 斤)</label>
+                            <input type="text" id="p-unit" placeholder="单位" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                        </div>
+                        <div class="w-40">
+                            <label class="block text-xs text-gray-500 mb-1">分类</label>
+                            <select id="p-category" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                <option value="熟食肉类">熟食肉类</option>
+                                <option value="冻品内脏">冻品内脏</option>
+                                <option value="炸货下酒菜">炸货下酒菜</option>
+                                <option value="凉菜类">凉菜类</option>
+                                <option value="调辅料类">调辅料类</option>
+                                <option value="其它包材调料" selected>其它包材调料</option>
+                            </select>
+                        </div>
+                        <button onclick="createProduct()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
                     </div>
 
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 bg-yellow-50 text-yellow-700 text-sm flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            按住左侧的 <strong>≡</strong> 图标上下拖拽，即可改变店员手机上的商品显示顺序。松手后自动保存。
+                        </div>
                         <table class="w-full text-left">
-                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-6 py-4 font-medium">商品名</th>
-                                    <th class="px-6 py-4 font-medium">单位</th>
-                                    <th class="px-6 py-4 font-medium">状态</th>
-                                    <th class="px-6 py-4 font-medium text-right">操作</th>
-                                </tr>
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                                <tr><th class="w-12 px-4 py-4"></th><th class="px-4 py-4">商品名 / 分类</th><th class="px-6 py-4">单位</th><th class="px-6 py-4">状态</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
                             <tbody id="productTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                         </table>
@@ -139,23 +122,10 @@
 
                 <!-- 模块 3：订单管理 -->
                 <div id="content-orders" class="space-y-6 hidden">
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-800">订单监控</h2>
-                            <p class="text-sm text-gray-500 mt-1">查看和修改所有用户的订单记录</p>
-                        </div>
-                    </div>
-
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <table class="w-full text-left">
-                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-6 py-4 font-medium">日期 / 订单号</th>
-                                    <th class="px-6 py-4 font-medium">下单人</th>
-                                    <th class="px-6 py-4 font-medium">商品</th>
-                                    <th class="px-6 py-4 font-medium text-right">数量</th>
-                                    <th class="px-6 py-4 font-medium text-right">操作</th>
-                                </tr>
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                                <tr><th class="px-6 py-4">日期 / 单号</th><th class="px-6 py-4">下单人</th><th class="px-6 py-4">商品</th><th class="px-6 py-4 text-right">订 / 退 / 存</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
                             <tbody id="orderTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                         </table>
@@ -166,44 +136,32 @@
         </main>
     </div>
 
-    <!-- ================= 3. 修改密码弹窗 ================= -->
+    <!-- 密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
-                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label>
-                    <input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入当前密码">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
-                    <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="至少 6 位新密码">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
-                    <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="再次输入新密码">
-                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">取消</button>
-                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button>
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">确认修改</button>
             </div>
         </div>
     </div>
 
-    <!-- ================= 4. JS 逻辑 ================= -->
     <script>
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
         let globalShops = [];
+        let sortableInstance = null;
 
-        // 守卫
         if (!token) { window.location.href = 'login.html'; }
         try {
             const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -221,45 +179,30 @@
             return data;
         }
 
-        // ================= 侧边栏切换逻辑 =================
+        // ================= 侧边栏切换 =================
         function switchTab(tabName) {
-            // 1. 隐藏所有内容
-            document.getElementById('content-users').classList.add('hidden');
-            document.getElementById('content-products').classList.add('hidden');
-            document.getElementById('content-orders').classList.add('hidden');
-            // 2. 显示当前内容
+            document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${tabName}`).classList.remove('hidden');
-
-            // 3. 重置所有导航按钮样式
             document.querySelectorAll('.nav-item').forEach(el => {
                 el.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap";
             });
-            // 4. 高亮当前选中的导航按钮
-            const activeBtn = document.getElementById(`nav-${tabName}`);
-            activeBtn.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
+            document.getElementById(`nav-${tabName}`).className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
         }
 
-        // ================= 用户与门店管理 =================
+        // ================= 门店与用户 =================
         async function loadShops() {
             try {
                 globalShops = await apiFetch('/admin/shops');
                 const shopSelect = document.getElementById('u-shop');
                 shopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
-                globalShops.forEach(s => {
-                    shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-                });
+                globalShops.forEach(s => { shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
             } catch (e) { console.error(e); }
         }
 
         async function createShop() {
             const name = document.getElementById('newShopName').value;
             if (!name) return alert("请输入门店名称");
-            try {
-                await apiFetch('/admin/shops', 'POST', { name });
-                document.getElementById('newShopName').value = '';
-                alert("门店添加成功");
-                loadShops();
-            } catch (e) { alert(e.message); }
+            try { await apiFetch('/admin/shops', 'POST', { name }); document.getElementById('newShopName').value = ''; loadShops(); } catch (e) { alert(e.message); }
         }
 
         async function loadUsers() {
@@ -269,22 +212,15 @@
                 tbody.innerHTML = '';
                 users.forEach(u => {
                     const shopName = globalShops.find(s => s.id === u.shop_id)?.name || '<span class="text-gray-300">无</span>';
-                    const roleBadge = u.role === 'admin' ? 'bg-red-100 text-red-700' : 
-                                      u.role === 'boss' ? 'bg-purple-100 text-purple-700' : 
-                                      'bg-green-100 text-green-700';
+                    const roleBadge = u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'boss' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
                     tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4">
-                                <div class="font-bold text-gray-800">${u.name}</div>
-                                <div class="text-xs text-gray-400">ID: ${u.id}</div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span>
-                            </td>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4"><div class="font-bold text-gray-800">${u.name}</div><div class="text-xs text-gray-400">ID: ${u.id}</div></td>
+                            <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
                             <td class="px-6 py-4 text-gray-600">${shopName}</td>
                             <td class="px-6 py-4 text-right space-x-3">
-                                <button onclick="resetUserPwd(${u.id})" class="text-orange-500 hover:text-orange-700 font-medium">重置密码</button>
-                                <button onclick="deleteUser(${u.id})" class="text-red-500 hover:text-red-700 font-medium">删除</button>
+                                <button onclick="resetUserPwd(${u.id})" class="text-orange-500 font-medium">重置密码</button>
+                                <button onclick="deleteUser(${u.id})" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
                     `;
@@ -297,29 +233,17 @@
             const password = document.getElementById('u-pass').value;
             const role = document.getElementById('u-role').value;
             const shop_id = document.getElementById('u-shop').value;
-
             if (!name || !password) return alert("请填写用户名和密码");
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
-
             try {
-                await apiFetch('/admin/users', 'POST', { 
-                    name, password, role, 
-                    shop_id: shop_id ? parseInt(shop_id) : null 
-                });
-                alert("创建成功");
-                document.getElementById('u-name').value = '';
-                document.getElementById('u-pass').value = '';
-                loadUsers();
+                await apiFetch('/admin/users', 'POST', { name, password, role, shop_id: shop_id ? parseInt(shop_id) : null });
+                alert("创建成功"); document.getElementById('u-name').value = ''; document.getElementById('u-pass').value = ''; loadUsers();
             } catch (e) { alert(e.message); }
         }
 
         async function resetUserPwd(userId) {
-            const pwd = prompt("请输入新的密码 (至少6位):");
-            if(!pwd) return;
-            try {
-                await apiFetch('/admin/reset-password', 'POST', { user_id: userId, new_password: pwd });
-                alert("密码已重置");
-            } catch(e) { alert(e.message); }
+            const pwd = prompt("请输入新的密码 (至少6位):"); if(!pwd) return;
+            try { await apiFetch('/admin/reset-password', 'POST', { user_id: userId, new_password: pwd }); alert("密码已重置"); } catch(e) { alert(e.message); }
         }
 
         async function deleteUser(userId) {
@@ -327,7 +251,7 @@
             try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); }
         }
 
-        // ================= 商品管理 =================
+        // ================= 商品管理 (拖拽) =================
         async function loadProducts() {
             try {
                 const products = await apiFetch('/admin/products');
@@ -335,8 +259,14 @@
                 tbody.innerHTML = '';
                 products.forEach(p => {
                     tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 font-bold text-gray-800">${p.name}</td>
+                        <tr class="hover:bg-gray-50 group" data-id="${p.id}">
+                            <td class="px-4 py-4 cursor-grab text-gray-400 hover:text-gray-800 drag-handle">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-gray-800">${p.name}</div>
+                                <div class="text-xs text-blue-500 mt-0.5">${p.category}</div>
+                            </td>
                             <td class="px-6 py-4 text-gray-500">${p.unit}</td>
                             <td class="px-6 py-4">
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
@@ -344,25 +274,61 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right space-x-3">
-                                <button onclick="toggleProduct(${p.id})" class="text-blue-500 hover:text-blue-700 font-medium">切换状态</button>
-                                <button onclick="deleteProduct(${p.id})" class="text-red-500 hover:text-red-700 font-medium">删除</button>
+                                <button onclick="editProduct(${p.id}, '${p.name}', '${p.unit}', '${p.category}')" class="text-blue-500 font-medium">编辑</button>
+                                <button onclick="toggleProduct(${p.id})" class="text-orange-500 font-medium">${p.is_active ? '下架' : '上架'}</button>
+                                <button onclick="deleteProduct(${p.id})" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
                     `;
                 });
+                initSortable(); // 每次渲染完初始化拖拽
             } catch (e) { alert(e.message); }
+        }
+
+        // 🌟 初始化拖拽
+        function initSortable() {
+            const tbody = document.getElementById('productTableBody');
+            if (sortableInstance) { sortableInstance.destroy(); }
+            sortableInstance = new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'bg-blue-50',
+                onEnd: async function (evt) {
+                    // 拖拽结束后，收集当前所有 ID 的新顺序
+                    const rows = tbody.querySelectorAll('tr');
+                    const productIds = Array.from(rows).map(r => parseInt(r.dataset.id));
+                    
+                    // 发送给后端
+                    try {
+                        await apiFetch('/admin/products/sort', 'POST', { product_ids: productIds });
+                        console.log("排序已保存");
+                    } catch (e) { alert("排序保存失败: " + e.message); loadProducts(); }
+                }
+            });
         }
 
         async function createProduct() {
             const name = document.getElementById('p-name').value;
             const unit = document.getElementById('p-unit').value;
+            const category = document.getElementById('p-category').value;
             if(!name || !unit) return alert("请填写完整");
             try {
-                await apiFetch('/admin/products', 'POST', { name, unit });
+                await apiFetch('/admin/products', 'POST', { name, unit, category });
                 document.getElementById('p-name').value = '';
                 document.getElementById('p-unit').value = '';
                 loadProducts();
             } catch(e) { alert(e.message); }
+        }
+
+        async function editProduct(id, oldName, oldUnit, oldCat) {
+            const name = prompt("修改商品名称:", oldName);
+            if (name === null) return;
+            const unit = prompt("修改单位 (如: 斤 / 箱):", oldUnit);
+            if (unit === null) return;
+            const category = prompt("修改分类:\n熟食肉类 / 冻品内脏 / 炸货下酒菜 / 凉菜类 / 调辅料类 / 其它包材调料", oldCat);
+            if (category === null) return;
+            
+            try { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); loadProducts(); } catch(e) { alert(e.message); }
         }
 
         async function toggleProduct(id) {
@@ -382,17 +348,16 @@
                 tbody.innerHTML = '';
                 orders.forEach(o => {
                     tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4">
-                                <div class="font-medium text-gray-800">${o.date}</div>
-                                <div class="text-xs text-gray-400">单号: ${o.id}</div>
-                            </td>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4"><div class="font-medium text-gray-800">${o.date}</div><div class="text-xs text-gray-400">单号: ${o.id}</div></td>
                             <td class="px-6 py-4 text-gray-600">${o.user_name}</td>
                             <td class="px-6 py-4 font-medium text-gray-800">${o.product_name}</td>
-                            <td class="px-6 py-4 text-right font-bold text-blue-600">${o.quantity}</td>
-                            <td class="px-6 py-4 text-right">
-                                <button onclick="deleteOrder(${o.id})" class="text-red-500 hover:text-red-700 font-medium">删除</button>
+                            <td class="px-6 py-4 text-right space-x-2">
+                                <span class="text-blue-600 font-bold">订:${o.quantity}</span>
+                                <span class="text-orange-500 font-bold">退:${o.return_quantity}</span>
+                                <span class="text-green-600 font-bold">存:${o.stock_quantity}</span>
                             </td>
+                            <td class="px-6 py-4 text-right"><button onclick="deleteOrder(${o.id})" class="text-red-500 font-medium">删除</button></td>
                         </tr>
                     `;
                 });
@@ -407,45 +372,24 @@
         // ================= 修改密码 =================
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
-        function showPasswordModal() {
-            document.getElementById('oldPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
-            pwdErrorMsg.classList.add('hidden');
-            pwdModal.classList.remove('hidden');
-        }
+        function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
         function hidePasswordModal() { pwdModal.classList.add('hidden'); }
         async function submitChangePassword() {
-            const oldPwd = document.getElementById('oldPassword').value;
-            const newPwd = document.getElementById('newPassword').value;
-            const confirmPwd = document.getElementById('confirmPassword').value;
-            const btn = document.getElementById('submitPwdBtn');
-            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写所有密码框");
-            if (newPwd.length < 6) return showPwdError("新密码不能少于 6 位");
-            if (newPwd !== confirmPwd) return showPwdError("两次输入的新密码不一致");
+            const oldPwd = document.getElementById('oldPassword').value; const newPwd = document.getElementById('newPassword').value; const confirmPwd = document.getElementById('confirmPassword').value; const btn = document.getElementById('submitPwdBtn');
+            if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写完整");
+            if (newPwd.length < 6) return showPwdError("新密码至少6位");
+            if (newPwd !== confirmPwd) return showPwdError("两次密码不一致");
             btn.disabled = true; btn.textContent = "提交中..."; pwdErrorMsg.classList.add('hidden');
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
-                });
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) });
                 const data = await res.json();
-                if (res.ok) {
-                    alert("密码修改成功！请重新登录。");
-                    localStorage.removeItem('jwt_token'); window.location.href = 'login.html';
-                } else { showPwdError(data.detail || "修改失败"); }
+                if (res.ok) { alert("修改成功，请重新登录"); localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; } else { showPwdError(data.detail || "修改失败"); }
             } catch (error) { showPwdError("网络错误"); } finally { btn.disabled = false; btn.textContent = "确认修改"; }
         }
         function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
 
         // ================= 初始化 =================
-        window.onload = async () => { 
-            await loadShops(); 
-            loadUsers();
-            loadProducts(); 
-            loadOrders(); 
-        };
+        window.onload = async () => { await loadShops(); loadUsers(); loadProducts(); loadOrders(); };
     </script>
 </body>
 </html>
