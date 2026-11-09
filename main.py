@@ -153,7 +153,7 @@ class ProductUpdate(BaseModel):
 
 class UserCreate(BaseModel):
     name: str
-    password: str
+    password: Optional[str] = None # 编辑时可为空
     role: str
     shop_id: Optional[int] = None
 
@@ -173,8 +173,14 @@ class OrderUpdate(BaseModel):
 class ShopCreate(BaseModel):
     name: str
 
+class ShopUpdate(BaseModel):
+    name: str
+
 class SortRequest(BaseModel):
     product_ids: List[int]
+
+class BatchToggleReq(BaseModel):
+    is_active: bool
 
 # ================= 6. 登录与初始化 =================
 @app.post("/login")
@@ -303,80 +309,47 @@ def get_daily_summary(query_date: Optional[str] = None, shop_id: Optional[int] =
 
 @app.get("/boss/product_detail")
 def get_product_detail(product_id: int, query_date: str, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    """查看某商品在某天的具体员工填报明细"""
     try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
     except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
 
-    query = db.query(
-        Order.id, User.name.label("user_name"), Order.quantity, Order.return_quantity, Order.stock_quantity
-    ).join(User, Order.user_id == User.id).filter(Order.product_id == product_id, Order.order_date == target_date)
-
-    if shop_id:
-        query = query.filter(User.shop_id == shop_id)
-
+    query = db.query(Order.id, User.name.label("user_name"), Order.quantity, Order.return_quantity, Order.stock_quantity).join(User, Order.user_id == User.id).filter(Order.product_id == product_id, Order.order_date == target_date)
+    if shop_id: query = query.filter(User.shop_id == shop_id)
     results = query.all()
     return [{"id": r.id, "user_name": r.user_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity)} for r in results]
 
 @app.put("/boss/orders/{order_id}")
 def boss_update_order(order_id: int, order_data: OrderUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    """老板修改单个员工订单"""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order: raise HTTPException(status_code=404, detail="订单不存在")
-    
-    if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0:
-        db.delete(order)
-    else:
-        order.quantity = order_data.quantity
-        order.return_quantity = order_data.return_quantity
-        order.stock_quantity = order_data.stock_quantity
-    db.commit()
-    return {"message": "订单修改成功"}
+    if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0: db.delete(order)
+    else: order.quantity = order_data.quantity; order.return_quantity = order_data.return_quantity; order.stock_quantity = order_data.stock_quantity
+    db.commit(); return {"message": "订单修改成功"}
 
 @app.delete("/boss/orders/{order_id}")
 def boss_delete_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    """老板删除单条员工订单"""
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order: raise HTTPException(status_code=404, detail="订单不存在")
-    db.delete(order); db.commit()
-    return {"message": "订单已删除"}
+    db.delete(order); db.commit(); return {"message": "订单已删除"}
 
 @app.get("/boss/unsubmitted")
 def get_unsubmitted_staff(query_date: Optional[str] = None, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    """查询指定日期未交单的店员名单"""
     if query_date:
         try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
         except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
     else: target_date = date.today()
 
-    # 查出所有相关店员
     staff_query = db.query(User).filter(User.role == "staff")
-    if shop_id:
-        staff_query = staff_query.filter(User.shop_id == shop_id)
+    if shop_id: staff_query = staff_query.filter(User.shop_id == shop_id)
     staffs = staff_query.all()
 
-    # 查出该日期已经交过单的 user_id
     submitted_query = db.query(Order.user_id).filter(Order.order_date == target_date)
-    if shop_id:
-        submitted_query = submitted_query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
+    if shop_id: submitted_query = submitted_query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
     submitted_ids = {r.user_id for r in submitted_query.distinct().all()}
 
-    # 过滤出未交单的
     unsubmitted = [{"id": s.id, "name": s.name, "shop_name": s.shop.name if s.shop else ""} for s in staffs if s.id not in submitted_ids]
     return {"date": str(target_date), "unsubmitted": unsubmitted}
 
 # ================= 10. 管理员接口 =================
-@app.delete("/admin/shops/{shop_id}")
-def admin_delete_shop(shop_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    shop = db.query(Shop).filter(Shop.id == shop_id).first()
-    if not shop: raise HTTPException(status_code=404, detail="门店不存在")
-    
-    # 安全检查：如果该门店下还有员工，则拒绝删除
-    if db.query(User).filter(User.shop_id == shop_id).first():
-        raise HTTPException(status_code=400, detail="该门店下还有员工，请先转移或删除员工后再试")
-        
-    db.delete(shop)
-    db.commit()
-    return {"message": "门店已删除"}
 @app.get("/admin/shops")
 def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Shop).all()
 
@@ -384,6 +357,25 @@ def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(
 def admin_create_shop(shop_data: ShopCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     if db.query(Shop).filter(Shop.name == shop_data.name).first(): raise HTTPException(status_code=400, detail="门店已存在")
     db.add(Shop(name=shop_data.name)); db.commit(); return {"message": "门店创建成功"}
+
+@app.put("/admin/shops/{shop_id}")
+def admin_update_shop(shop_id: int, shop_data: ShopUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop: raise HTTPException(status_code=404, detail="门店不存在")
+    if db.query(Shop).filter(Shop.name == shop_data.name, Shop.id != shop_id).first():
+        raise HTTPException(status_code=400, detail="该门店名称已存在")
+    shop.name = shop_data.name
+    db.commit()
+    return {"message": "门店名称已更新"}
+
+@app.delete("/admin/shops/{shop_id}")
+def admin_delete_shop(shop_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop: raise HTTPException(status_code=404, detail="门店不存在")
+    if db.query(User).filter(User.shop_id == shop_id).first():
+        raise HTTPException(status_code=400, detail="该门店下还有员工，请先转移或删除员工后再试")
+    db.delete(shop); db.commit()
+    return {"message": "门店已删除"}
 
 @app.get("/admin/users")
 def admin_get_users(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -395,11 +387,20 @@ def admin_create_user(user_data: UserCreate, db: Session = Depends(get_db), curr
     db.add(User(name=user_data.name, role=user_data.role, shop_id=user_data.shop_id, hashed_password=get_password_hash(user_data.password)))
     db.commit(); return {"message": "用户创建成功"}
 
-@app.put("/admin/users/{user_id}/role")
-def admin_update_role(user_id: int, role_data: RoleUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+@app.put("/admin/users/{user_id}")
+def admin_update_user(user_id: int, user_data: UserCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user: raise HTTPException(status_code=404, detail="用户不存在")
-    user.role = role_data.role; user.shop_id = role_data.shop_id; db.commit(); return {"message": "用户信息已更新"}
+    if user.name == "admin" and user_data.role != "admin":
+        raise HTTPException(status_code=400, detail="不能修改超级管理员的角色")
+    
+    user.role = user_data.role
+    user.shop_id = user_data.shop_id
+    if user_data.password: # 如果传了新密码，顺便重置密码
+        user.hashed_password = get_password_hash(user_data.password)
+        
+    db.commit()
+    return {"message": "用户信息已更新"}
 
 @app.delete("/admin/users/{user_id}")
 def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -411,7 +412,8 @@ def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user:
     return {"message": "用户已删除"}
 
 @app.get("/admin/products")
-def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
+def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): 
+    return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/admin/products")
 def admin_create_product(product_data: ProductCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -424,6 +426,13 @@ def admin_sort_products(sort_data: SortRequest, db: Session = Depends(get_db), c
     for index, product_id in enumerate(sort_data.product_ids):
         db.query(Product).filter(Product.id == product_id).update({"sort_order": index})
     db.commit(); return {"message": "排序已保存"}
+
+# 🌟 新增：批量上下架接口
+@app.post("/admin/products/batch-toggle")
+def admin_batch_toggle_products(req: BatchToggleReq, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    db.query(Product).update({"is_active": req.is_active})
+    db.commit()
+    return {"message": f"所有商品已{'上架' if req.is_active else '下架'}"}
 
 @app.put("/admin/products/{product_id}")
 def admin_update_product(product_id: int, prod_data: ProductUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):

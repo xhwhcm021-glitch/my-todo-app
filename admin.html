@@ -14,7 +14,7 @@
             .responsive-table td::before { content: attr(data-label); font-weight: 500; color: #6b7280; text-align: left; margin-right: 1rem;}
             .responsive-table td:last-child { margin-top: 0.5rem; border-top: 1px dashed #e5e7eb; padding-top: 1rem !important; justify-content: flex-end; }
             .drag-handle { position: absolute; top: 1rem; left: 1rem; }
-            .responsive-table td[data-label=""] { display: none; } /* 手机端隐藏拖拽图标占位 */
+            .responsive-table td[data-label=""] { display: none; }
         }
     </style>
 </head>
@@ -42,25 +42,18 @@
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto">
-
-                <!-- 模块 1：用户与门店 -->
+                <!-- 用户与门店 -->
                 <div id="content-users" class="space-y-6">
                     <div class="flex flex-col md:flex-row gap-6">
-                        <!-- 门店管理 -->
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
                             <h3 class="font-bold text-gray-700 mb-4">新增门店</h3>
                             <div class="flex gap-3 mb-6">
                                 <input type="text" id="newShopName" placeholder="门店名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <button onclick="createShop()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium">添加</button>
                             </div>
-                            
                             <h3 class="font-bold text-gray-700 mb-2 border-t pt-4">已有门店</h3>
-                            <div id="shopList" class="space-y-2 max-h-48 overflow-y-auto">
-                                <!-- JS 渲染 -->
-                            </div>
+                            <div id="shopList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                         </div>
-
-                        <!-- 新增用户 -->
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
                             <h3 class="font-bold text-gray-700 mb-4">新增用户</h3>
                             <div class="space-y-3">
@@ -82,8 +75,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- 用户列表 -->
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
                         <table class="w-full text-left responsive-table">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
@@ -94,7 +85,7 @@
                     </div>
                 </div>
 
-                <!-- 模块 2：商品管理 -->
+                <!-- 商品管理 -->
                 <div id="content-products" class="space-y-6 hidden">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3 items-end">
                         <div class="flex-1 w-full">
@@ -119,8 +110,10 @@
                         <button onclick="createProduct()" class="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
                     </div>
 
-                    <div class="relative">
-                        <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    <div class="flex gap-2">
+                        <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        <button onclick="batchToggleProducts(true)" class="bg-green-600 text-white px-4 py-2 rounded-xl shadow-sm hover:bg-green-700 font-medium whitespace-nowrap text-sm">一键上架</button>
+                        <button onclick="batchToggleProducts(false)" class="bg-gray-500 text-white px-4 py-2 rounded-xl shadow-sm hover:bg-gray-600 font-medium whitespace-nowrap text-sm">一键下架</button>
                     </div>
 
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
@@ -133,7 +126,7 @@
                     </div>
                 </div>
 
-                <!-- 模块 3：订单管理 -->
+                <!-- 订单管理 -->
                 <div id="content-orders" class="space-y-6 hidden">
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
                         <table class="w-full text-left responsive-table">
@@ -144,12 +137,31 @@
                         </table>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
-    <!-- 1. 门店编辑弹窗 -->
+    <!-- 🌟 全局自定义危险操作确认弹窗 -->
+    <div id="confirmActionModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirmTitle">危险操作</h3>
+                <p class="text-sm text-gray-500 mb-4" id="confirmMessage">确认要删除吗？此操作不可恢复。</p>
+                <p class="text-xs text-red-500 font-bold mb-2">请在下方输入“删除”以确认操作：</p>
+                <input type="text" id="confirmInput" class="w-full px-4 py-2 border border-red-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none" placeholder="删除">
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">取消</button>
+                <button id="confirmBtn" onclick="executeConfirmAction()" class="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 各种编辑弹窗（省略部分重复结构以节省空间，逻辑相同） -->
+    <!-- 1. 门店编辑 -->
     <div id="editShopModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -168,7 +180,7 @@
         </div>
     </div>
 
-    <!-- 2. 用户编辑弹窗 -->
+    <!-- 2. 用户编辑 -->
     <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -205,7 +217,7 @@
         </div>
     </div>
 
-    <!-- 3. 商品编辑弹窗 -->
+    <!-- 3. 商品编辑 -->
     <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -235,7 +247,7 @@
         </div>
     </div>
 
-    <!-- 4. 订单编辑弹窗 -->
+    <!-- 4. 订单编辑 -->
     <div id="editOrderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -285,6 +297,7 @@
         let allProductsData = [];
         let allOrdersData = [];
         let sortableInstance = null;
+        let confirmCallback = null;
 
         if (!token) { window.location.href = 'login.html'; }
         try {
@@ -310,6 +323,39 @@
                 el.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap";
             });
             document.getElementById(`nav-${tabName}`).className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
+        }
+
+        // 🌟 自定义防误触弹窗逻辑
+        const confirmActionModal = document.getElementById('confirmActionModal');
+        const confirmInput = document.getElementById('confirmInput');
+        const confirmBtn = document.getElementById('confirmBtn');
+
+        confirmInput.addEventListener('input', (e) => {
+            confirmBtn.disabled = e.target.value !== '删除';
+        });
+
+        function showCustomConfirm(title, message, callback) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            confirmInput.value = '';
+            confirmBtn.disabled = true;
+            confirmCallback = callback;
+            confirmActionModal.classList.remove('hidden');
+            confirmActionModal.classList.add('flex');
+            setTimeout(() => confirmInput.focus(), 100);
+        }
+
+        function closeConfirmModal() {
+            confirmActionModal.classList.add('hidden');
+            confirmActionModal.classList.remove('flex');
+            confirmCallback = null;
+        }
+
+        async function executeConfirmAction() {
+            if (confirmInput.value === '删除' && confirmCallback) {
+                await confirmCallback();
+                closeConfirmModal();
+            }
         }
 
         // ================= 门店与用户 =================
@@ -345,7 +391,6 @@
             try { await apiFetch('/admin/shops', 'POST', { name }); document.getElementById('newShopName').value = ''; loadShops(); } catch (e) { alert(e.message); }
         }
 
-        // 🌟 门店改名逻辑
         const editShopModal = document.getElementById('editShopModal');
         function openEditShop(id, name) {
             document.getElementById('edit-s-id').value = id;
@@ -362,13 +407,19 @@
                 await apiFetch(`/admin/shops/${id}`, 'PUT', { name });
                 closeEditShop();
                 loadShops();
-                loadUsers(); // 刷新用户列表里的门店名称
+                loadUsers(); 
             } catch (e) { alert(e.message); }
         }
 
-        async function deleteShop(id, name) {
-            if (!confirm(`确定要删除门店【${name}】吗？\n\n注意：如果门店下还有员工，将无法删除。`)) return;
-            try { await apiFetch(`/admin/shops/${id}`, 'DELETE'); loadShops(); } catch (e) { alert(e.message); }
+        // 🌟 使用自定义弹窗拦截删除
+        function deleteShop(id, name) {
+            showCustomConfirm(
+                '删除门店', 
+                `确定要删除门店【${name}】吗？\n注意：如果门店下还有员工，将无法删除。`, 
+                async () => {
+                    try { await apiFetch(`/admin/shops/${id}`, 'DELETE'); loadShops(); } catch (e) { alert(e.message); }
+                }
+            );
         }
 
         async function loadUsers() {
@@ -389,7 +440,7 @@
                             <td data-label="所属门店" class="px-6 py-4 text-gray-600">${shopName}</td>
                             <td data-label="操作" class="px-6 py-4 text-right space-x-3">
                                 <button onclick="openEditUser(${u.id}, '${u.name}', '${u.role}', ${u.shop_id})" class="text-blue-500 font-medium">编辑</button>
-                                <button onclick="deleteUser(${u.id})" class="text-red-500 font-medium">删除</button>
+                                <button onclick="deleteUser(${u.id}, '${u.name}')" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
                     `;
@@ -410,7 +461,6 @@
             } catch (e) { alert(e.message); }
         }
 
-        // 🌟 用户编辑逻辑
         const editUserModal = document.getElementById('editUserModal');
         function openEditUser(id, name, role, shop_id) {
             document.getElementById('edit-u-id').value = id;
@@ -419,8 +469,7 @@
             document.getElementById('edit-u-role').value = role;
             document.getElementById('edit-u-shop').value = shop_id || "";
             document.getElementById('edit-u-pass').value = "";
-            editUserModal.classList.remove('hidden');
-            editUserModal.classList.add('flex');
+            editUserModal.classList.remove('hidden'); editUserModal.classList.add('flex');
         }
         function closeEditUser() { editUserModal.classList.add('hidden'); editUserModal.classList.remove('flex'); }
         async function submitEditUser() {
@@ -429,23 +478,21 @@
             const role = document.getElementById('edit-u-role').value;
             const shop_id = document.getElementById('edit-u-shop').value;
             const password = document.getElementById('edit-u-pass').value;
-
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
-
             try {
-                await apiFetch(`/admin/users/${id}`, 'PUT', { 
-                    name, role, 
-                    shop_id: shop_id ? parseInt(shop_id) : null,
-                    password: password ? password : null // 只有填了密码才更新
-                });
-                closeEditUser();
-                loadUsers();
+                await apiFetch(`/admin/users/${id}`, 'PUT', { name, role, shop_id: shop_id ? parseInt(shop_id) : null, password: password ? password : null });
+                closeEditUser(); loadUsers();
             } catch (e) { alert(e.message); }
         }
 
-        async function deleteUser(userId) {
-            if(!confirm("确定要删除该用户吗？")) return;
-            try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); }
+        function deleteUser(userId, name) {
+            showCustomConfirm(
+                '删除用户', 
+                `确定要删除用户【${name}】吗？此操作无法撤销。`, 
+                async () => {
+                    try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); }
+                }
+            );
         }
 
         // ================= 商品管理 =================
@@ -482,7 +529,7 @@
                         <td class="px-6 py-4 text-right space-x-3">
                             <button onclick="openEditProduct(${p.id})" class="text-blue-500 font-medium">编辑</button>
                             <button onclick="toggleProduct(${p.id})" class="text-orange-500 font-medium">${p.is_active ? '下架' : '上架'}</button>
-                            <button onclick="deleteProduct(${p.id})" class="text-red-500 font-medium">删除</button>
+                            <button onclick="deleteProduct(${p.id}, '${p.name}')" class="text-red-500 font-medium">删除</button>
                         </td>
                     </tr>
                 `;
@@ -516,7 +563,16 @@
             } catch(e) { alert(e.message); }
         }
 
-        // 商品编辑弹窗
+        // 🌟 批量上下架
+        async function batchToggleProducts(isActive) {
+            const action = isActive ? '全部上架' : '全部下架';
+            if (!confirm(`确定要将所有商品${action}吗？`)) return;
+            try {
+                await apiFetch('/admin/products/batch-toggle', 'POST', { is_active: isActive });
+                loadProducts();
+            } catch (e) { alert(e.message); }
+        }
+
         const editModal = document.getElementById('editProductModal');
         function openEditProduct(id) {
             const p = allProductsData.find(x => x.id === id);
@@ -538,7 +594,16 @@
         }
 
         async function toggleProduct(id) { try { await apiFetch(`/admin/products/${id}/toggle`, 'PUT'); loadProducts(); } catch(e) { alert(e.message); } }
-        async function deleteProduct(id) { if(!confirm("确定要彻底删除该商品吗？")) return; try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); } }
+        
+        function deleteProduct(id, name) {
+            showCustomConfirm(
+                '删除商品', 
+                `确定要彻底删除商品【${name}】吗？如果该商品有历史订单，将无法删除。`, 
+                async () => {
+                    try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); }
+                }
+            );
+        }
 
         // ================= 订单管理 =================
         async function loadOrders() {
@@ -562,7 +627,7 @@
                             </td>
                             <td data-label="操作" class="px-6 py-4 text-right space-x-3">
                                 <button onclick="openEditOrder(${o.id}, ${o.quantity}, ${o.return_quantity}, ${o.stock_quantity})" class="text-blue-500 font-medium">修改</button>
-                                <button onclick="deleteOrder(${o.id})" class="text-red-500 font-medium">删除</button>
+                                <button onclick="deleteOrder(${o.id}, '${o.product_name}')" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
                     `;
@@ -570,7 +635,6 @@
             } catch (e) { alert(e.message); }
         }
 
-        // 🌟 订单修改弹窗
         const editOrderModal = document.getElementById('editOrderModal');
         function openEditOrder(id, q, r, s) {
             document.getElementById('edit-o-id').value = id;
@@ -588,7 +652,15 @@
             try { await apiFetch(`/admin/orders/${id}`, 'PUT', { quantity: q, return_quantity: r, stock_quantity: s }); closeEditOrder(); loadOrders(); } catch (e) { alert(e.message); }
         }
 
-        async function deleteOrder(id) { if(!confirm("确定要删除这条订单记录吗？")) return; try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); } }
+        function deleteOrder(id, productName) {
+            showCustomConfirm(
+                '删除订单', 
+                `确定要删除订单【${productName}】吗？`, 
+                async () => {
+                    try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); }
+                }
+            );
+        }
 
         // ================= 修改密码 =================
         const pwdModal = document.getElementById('passwordModal');
