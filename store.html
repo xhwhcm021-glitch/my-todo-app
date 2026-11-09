@@ -15,13 +15,17 @@
         .print-table { width: 100%; border-collapse: collapse; font-size: 16px; }
         .print-table th, .print-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; height: 32px; }
         .print-table th { font-weight: bold; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col font-sans antialiased text-gray-800">
 
     <header class="bg-white shadow-sm sticky top-0 z-30">
         <div class="px-4 h-14 flex justify-between items-center">
-            <h1 class="text-lg font-bold text-gray-800 tracking-wide">订货单</h1>
+            <!-- 🌟 这里的文字会被 JS 动态替换为 'xxx店订货单' -->
+            <h1 class="text-lg font-bold text-gray-800 tracking-wide" id="topHeaderTitle">订货单</h1>
             <div class="flex items-center space-x-3">
                 <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md active:bg-blue-50">改密</button>
                 <button onclick="logout()" class="text-sm text-red-500 font-medium px-3 py-1.5 rounded-md active:bg-red-50">退出</button>
@@ -46,7 +50,6 @@
         <div class="text-center text-gray-400 py-10">加载中...</div>
     </main>
 
-    <!-- 底部固定区 -->
     <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 pt-3 pb-4 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
         <div class="mb-3">
             <input type="text" id="remarkInput" placeholder="📝 缺货/临时补录留言（如：洗洁精2瓶）" class="w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-gray-700 placeholder-yellow-600/50 focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -61,10 +64,9 @@
         </div>
     </footer>
 
-    <!-- 预览图弹窗 -->
     <div id="previewModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex-col">
         <div class="flex justify-between items-center p-4 bg-black/50 text-white">
-            <span class="text-sm font-medium">长按图片可保存或发送</span>
+            <span class="text-sm font-medium">长按图片可保存或发送给老板</span>
             <button onclick="closePreview()" class="text-white bg-white/20 p-2 rounded-full active:bg-white/40">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
@@ -74,9 +76,9 @@
         </div>
     </div>
 
-    <!-- 隐藏的打印区 -->
     <div id="printContainer">
-        <h2 style="text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 30px;" id="printHeader">________店订货单</h2>
+        <!-- 🌟 表头也会通过 JS 动态替换为带店名的 -->
+        <h2 style="text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 30px;" id="printHeader"></h2>
         <div style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 10px;">
             <div>日期：<span id="printDate"></span></div>
             <div>订货人：<span id="printStaff"></span></div>
@@ -96,22 +98,21 @@
         </div>
     </div>
 
-    <!-- 修改密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center">
-                <h3 class="text-lg font-bold">修改密码</h3>
-                <button onclick="hidePasswordModal()" class="text-gray-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
+                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">确认修改</button>
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">确认修改</button>
             </div>
         </div>
     </div>
@@ -133,15 +134,17 @@
             options.headers['Authorization'] = `Bearer ${token}`;
             const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
             if (response.status === 401) {
-                localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; return;
+                localStorage.removeItem('jwt_token'); 
+                window.location.href = 'login.html'; 
+                return;
             }
             return response;
         }
 
-        // 核心渲染逻辑
         let allProducts = [];
         let currentCategory = '全部';
-        let historyData = { yesterday_shop: {}, today_shop: {}, today_my: {}, my_remark: "" }; 
+        // 新增了 shop_name
+        let historyData = { yesterday_shop: {}, today_my: {}, my_remark: "", shop_name: "" }; 
 
         async function loadData() {
             try {
@@ -155,7 +158,9 @@
                 allProducts = await resProducts.json();
                 historyData = await resHistory.json();
 
-                // 填充【自己的】备注
+                // 🌟 动态设置顶部的标题为店名
+                document.getElementById('topHeaderTitle').innerText = `${historyData.shop_name || '本'}店订货单`;
+
                 if (historyData.my_remark) {
                     document.getElementById('remarkInput').value = historyData.my_remark;
                 }
@@ -170,7 +175,7 @@
 
                 renderList();
             } catch (error) {
-                document.getElementById('productList').innerHTML = `<div class="text-center text-red-500 py-10">加载失败</div>`;
+                document.getElementById('productList').innerHTML = `<div class="text-center text-red-500 py-10">加载失败，请刷新重试</div>`;
             }
         }
 
@@ -203,48 +208,39 @@
             }
 
             mainContainer.innerHTML = filtered.map(p => {
-                // 1. 获取【全店】历史数据用于提示
                 const yShop = historyData.yesterday_shop[p.id];
-                const tShop = historyData.today_shop[p.id];
-                
-                // 2. 获取【自己】的数据用于输入框回显
                 const myData = historyData.today_my[p.id];
                 
-                let hintHtml = "";
-                if (yShop) {
-                    hintHtml += `<span class="text-gray-400">昨(全店): 订${yShop.quantity}/退${yShop.return_quantity}/存${yShop.stock_quantity}</span>`;
-                }
-                if (tShop) {
-                    if (hintHtml) hintHtml += `<span class="text-gray-300 mx-1">|</span>`;
-                    hintHtml += `<span class="text-blue-500 font-medium">今(全店): 订${tShop.quantity}/退${tShop.return_quantity}/存${tShop.stock_quantity}</span>`;
-                }
+                const yQ = yShop ? yShop.quantity : '-';
+                const yR = yShop ? yShop.return_quantity : '-';
+                const yS = yShop ? yShop.stock_quantity : '-';
 
-                // 3. 只回填自己的数据
                 const valQ = myData && myData.quantity !== 0 ? myData.quantity : '';
                 const valR = myData && myData.return_quantity !== 0 ? myData.return_quantity : '';
                 const valS = myData && myData.stock_quantity !== 0 ? myData.stock_quantity : '';
 
                 return `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col space-y-2">
-                    <div class="flex justify-between items-start">
-                        <div class="flex flex-col">
-                            <span class="text-base font-bold text-gray-800">${p.name}</span>
-                            <div class="text-[10px] mt-0.5">${hintHtml}</div>
-                        </div>
-                        <span class="text-xs text-gray-400 shrink-0">单位: ${p.unit}</span>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col space-y-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-base font-bold text-gray-800">${p.name}</span>
+                        <span class="text-xs text-gray-400">单位: ${p.unit}</span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 mt-1">
+                    
+                    <div class="grid grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-[10px] text-center text-gray-500 mb-1">订货量</label>
-                            <input type="number" min="0" step="any" value="${valQ}" data-id="${p.id}" data-field="quantity" placeholder="-" class="input-qty w-full h-10 text-center font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-[10px] text-center text-gray-500 mb-0.5">订货量</label>
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valQ}" data-id="${p.id}" data-field="quantity" placeholder="-" class="input-qty w-full h-10 text-center font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yQ}</div>
                         </div>
                         <div>
-                            <label class="block text-[10px] text-center text-gray-500 mb-1">退货量</label>
-                            <input type="number" min="0" step="any" value="${valR}" data-id="${p.id}" data-field="return_quantity" placeholder="-" class="input-return w-full h-10 text-center font-bold text-orange-500 bg-orange-50 border border-orange-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <label class="block text-[10px] text-center text-gray-500 mb-0.5">退货量</label>
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valR}" data-id="${p.id}" data-field="return_quantity" placeholder="-" class="input-return w-full h-10 text-center font-bold text-orange-500 bg-orange-50 border border-orange-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yR}</div>
                         </div>
                         <div>
-                            <label class="block text-[10px] text-center text-gray-500 mb-1">库存量</label>
-                            <input type="number" min="0" step="any" value="${valS}" data-id="${p.id}" data-field="stock_quantity" placeholder="-" class="input-stock w-full h-10 text-center font-bold text-green-600 bg-green-50 border border-green-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <label class="block text-[10px] text-center text-gray-500 mb-0.5">库存量</label>
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valS}" data-id="${p.id}" data-field="stock_quantity" placeholder="-" class="input-stock w-full h-10 text-center font-bold text-green-600 bg-green-50 border border-green-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yS}</div>
                         </div>
                     </div>
                 </div>
@@ -252,7 +248,6 @@
             }).join('');
         }
 
-        // 预览图片生成逻辑
         async function openPreview() {
             const inputs = document.querySelectorAll('input[type="number"]');
             const inputData = {};
@@ -268,7 +263,6 @@
 
             const today = new Date();
             const dateStr = `${today.getFullYear()} 年 ${today.getMonth() + 1} 月 ${today.getDate()} 日`;
-            
             let staffName = "店员";
             try {
                 const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -277,9 +271,9 @@
 
             document.getElementById('printDate').innerText = dateStr;
             document.getElementById('printStaff').innerText = staffName;
-            document.getElementById('printHeader').innerText = `________店订货单`;
+            // 🌟 动态把店名写到图片表头中
+            document.getElementById('printHeader').innerText = `${historyData.shop_name || '本'}店订货单`;
 
-            // 处理备注图片显示
             const remarkVal = document.getElementById('remarkInput').value.trim();
             const remarkArea = document.getElementById('printRemarkArea');
             if (remarkVal) {
@@ -293,7 +287,12 @@
             const split1 = Math.ceil(total / 4);
             const split2 = Math.ceil(total / 2);
             const split3 = Math.ceil((total * 3) / 4);
-            const cols = [allProducts.slice(0, split1), allProducts.slice(split1, split2), allProducts.slice(split2, split3), allProducts.slice(split3, total)];
+            const cols = [
+                allProducts.slice(0, split1), 
+                allProducts.slice(split1, split2), 
+                allProducts.slice(split2, split3), 
+                allProducts.slice(split3, total)
+            ];
 
             const buildTable = (products, isFirstTwoCols) => {
                 let html = `<table class="print-table"><thead><tr><th>品名</th>`;
@@ -306,6 +305,7 @@
                     const q = data.quantity || '';
                     const r = data.return_quantity || '';
                     const s = data.stock_quantity || '';
+                    
                     html += `<tr><td>${p.name}</td>`;
                     if (isFirstTwoCols) html += `<td>${q}</td><td>${r}</td><td>${s}</td>`;
                     else html += `<td>${q}</td>`;
@@ -340,7 +340,7 @@
                     const canvas = await html2canvas(printContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
                     img.src = canvas.toDataURL('image/jpeg', 0.9);
                 } catch (err) {
-                    alert("图片生成失败");
+                    alert("图片生成失败，请重试");
                     closePreview();
                 }
             }, 300);
@@ -352,7 +352,6 @@
             previewModal.classList.remove('flex');
         }
 
-        // 提交逻辑
         async function submitOrders() {
             const inputs = document.querySelectorAll('input[type="number"]');
             const orderMap = {}; 
@@ -374,7 +373,8 @@
 
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
-            submitBtn.disabled = true; submitBtn.textContent = "提交中...";
+            submitBtn.disabled = true; 
+            submitBtn.textContent = "提交中...";
 
             try {
                 const response = await authFetch('/orders/batch', {
@@ -386,33 +386,69 @@
                 if (!response.ok) throw new Error(data.detail || "提交失败");
                 
                 alert(data.message || "提交成功！");
-                loadData(); // 重新加载最新数据刷新卡片回显
+                loadData(); 
 
             } catch (error) {
                 alert(error.message);
             } finally {
-                submitBtn.disabled = false; submitBtn.textContent = originalText;
+                submitBtn.disabled = false; 
+                submitBtn.textContent = originalText;
             }
         }
 
-        // 密码修改逻辑
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
-        function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
+        
+        function showPasswordModal() { 
+            document.getElementById('oldPassword').value = ''; 
+            document.getElementById('newPassword').value = ''; 
+            document.getElementById('confirmPassword').value = ''; 
+            pwdErrorMsg.classList.add('hidden'); 
+            pwdModal.classList.remove('hidden'); 
+        }
+        
         function hidePasswordModal() { pwdModal.classList.add('hidden'); }
+        
         async function submitChangePassword() {
-            const oldPwd = document.getElementById('oldPassword').value; const newPwd = document.getElementById('newPassword').value; const confirmPwd = document.getElementById('confirmPassword').value; const btn = document.getElementById('submitPwdBtn');
+            const oldPwd = document.getElementById('oldPassword').value; 
+            const newPwd = document.getElementById('newPassword').value; 
+            const confirmPwd = document.getElementById('confirmPassword').value; 
+            const btn = document.getElementById('submitPwdBtn');
+            
             if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写完整");
             if (newPwd.length < 6) return showPwdError("新密码至少6位");
             if (newPwd !== confirmPwd) return showPwdError("两次密码不一致");
-            btn.disabled = true; btn.textContent = "提交中..."; pwdErrorMsg.classList.add('hidden');
+            
+            btn.disabled = true; 
+            btn.textContent = "提交中..."; 
+            pwdErrorMsg.classList.add('hidden');
+            
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) });
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) 
+                });
                 const data = await res.json();
-                if (res.ok) { alert("修改成功，请重新登录"); localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; } else { showPwdError(data.detail || "修改失败"); }
-            } catch (error) { showPwdError("网络错误"); } finally { btn.disabled = false; btn.textContent = "确认修改"; }
+                if (res.ok) { 
+                    alert("修改成功，请重新登录"); 
+                    localStorage.removeItem('jwt_token'); 
+                    window.location.href = 'login.html'; 
+                } else { 
+                    showPwdError(data.detail || "修改失败"); 
+                }
+            } catch (error) { 
+                showPwdError("网络错误"); 
+            } finally { 
+                btn.disabled = false; 
+                btn.textContent = "确认修改"; 
+            }
         }
-        function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
+        
+        function showPwdError(msg) { 
+            pwdErrorMsg.textContent = msg; 
+            pwdErrorMsg.classList.remove('hidden'); 
+        }
 
         window.onload = loadData;
     </script>

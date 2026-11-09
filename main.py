@@ -224,17 +224,20 @@ def admin_reset_other_password(pwd_data: AdminResetPasswordReq, db: Session = De
     return {"message": "密码重置成功"}
 
 # ================= 8. 店员接口 =================
-@app.get("/products/active")
-def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    return db.query(Product).filter(Product.is_active == True).order_by(Product.sort_order.asc(), Product.id.asc()).all()
-
 @app.get("/staff/daily_history")
 def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
-    """获取门店昨天/今天汇总数据（用于提示），以及当前员工自己的数据（用于回显）"""
+    """一次性获取门店昨天/今天汇总数据，以及当前员工自己的数据"""
     today = date.today()
     yesterday = today - timedelta(days=1)
     user_id = current_user["user_id"]
     shop_id = current_user["shop_id"]
+
+    # 🌟 新增：查询当前门店名称
+    shop_name = "未知门店"
+    if shop_id:
+        shop_info = db.query(Shop).filter(Shop.id == shop_id).first()
+        if shop_info:
+            shop_name = shop_info.name
 
     # 1. 昨天【全店】汇总数据
     y_results = db.query(
@@ -258,7 +261,7 @@ def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = 
      .group_by(Order.product_id).all()
     today_shop = {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in t_results}
 
-    # 3. 今天【当前员工自己】填写的数据（用于安全回显输入框，避免覆盖别人的数据）
+    # 3. 今天【当前员工自己】填写的数据（用于安全回显输入框）
     my_orders = db.query(Order).filter(Order.user_id == user_id, Order.order_date == today).all()
     today_my = {str(o.product_id): {"quantity": float(o.quantity), "return_quantity": float(o.return_quantity), "stock_quantity": float(o.stock_quantity)} for o in my_orders}
 
@@ -270,7 +273,8 @@ def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = 
         "yesterday_shop": yesterday_shop,
         "today_shop": today_shop,
         "today_my": today_my,
-        "my_remark": my_remark
+        "my_remark": my_remark,
+        "shop_name": shop_name  # 🌟 返回门店名称
     }
 
 @app.post("/orders/batch")
