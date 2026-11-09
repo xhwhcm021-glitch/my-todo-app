@@ -65,7 +65,6 @@ class Order(Base):
     user = relationship("User", back_populates="orders")
     product = relationship("Product", back_populates="orders")
 
-# 每日缺货/补充备注表
 class DailyRemark(Base):
     __tablename__ = "daily_remarks"
     id = Column(Integer, primary_key=True, index=True)
@@ -202,7 +201,7 @@ def seed_data(db: Session = Depends(get_db)):
     db.commit()
     return {"message": "初始化成功！账号: admin, boss, staff1，密码均为 123456"}
 
-# ================= 7. 密码管理接口 =================
+# ================= 7. 密码管理 =================
 @app.post("/auth/change-password")
 def change_my_password(pwd_data: ChangePasswordReq, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     user = db.query(User).filter(User.id == current_user["user_id"]).first()
@@ -230,54 +229,29 @@ def get_active_products(db: Session = Depends(get_db), current_user: dict = Depe
 
 @app.get("/staff/daily_history")
 def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
-    """获取门店昨天/今天汇总数据，以及当前员工自己的数据"""
     today = date.today()
     yesterday = today - timedelta(days=1)
     user_id = current_user["user_id"]
     shop_id = current_user["shop_id"]
 
-    # 查询当前门店名称
     shop_name = "未知门店"
     if shop_id:
         shop_info = db.query(Shop).filter(Shop.id == shop_id).first()
-        if shop_info:
-            shop_name = shop_info.name
+        if shop_info: shop_name = shop_info.name
 
-    # 1. 昨天【全店】汇总数据
-    y_results = db.query(
-        Order.product_id,
-        func.sum(Order.quantity).label("q"),
-        func.sum(Order.return_quantity).label("r"),
-        func.sum(Order.stock_quantity).label("s")
-    ).join(User, Order.user_id == User.id)\
-     .filter(User.shop_id == shop_id, Order.order_date == yesterday)\
-     .group_by(Order.product_id).all()
-    yesterday_shop = {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in y_results}
+    def get_shop_orders(d):
+        results = db.query(Order.product_id, func.sum(Order.quantity).label("q"), func.sum(Order.return_quantity).label("r"), func.sum(Order.stock_quantity).label("s")).join(User, Order.user_id == User.id).filter(User.shop_id == shop_id, Order.order_date == d).group_by(Order.product_id).all()
+        return {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in results}
 
-    # 2. 今天【全店】汇总数据
-    t_results = db.query(
-        Order.product_id,
-        func.sum(Order.quantity).label("q"),
-        func.sum(Order.return_quantity).label("r"),
-        func.sum(Order.stock_quantity).label("s")
-    ).join(User, Order.user_id == User.id)\
-     .filter(User.shop_id == shop_id, Order.order_date == today)\
-     .group_by(Order.product_id).all()
-    today_shop = {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in t_results}
-
-    # 3. 今天【当前员工自己】填写的数据（用于安全回显输入框）
     my_orders = db.query(Order).filter(Order.user_id == user_id, Order.order_date == today).all()
     today_my = {str(o.product_id): {"quantity": float(o.quantity), "return_quantity": float(o.return_quantity), "stock_quantity": float(o.stock_quantity)} for o in my_orders}
 
-    # 4. 当前员工自己的备注信息
     remark_record = db.query(DailyRemark).filter(DailyRemark.user_id == user_id, DailyRemark.remark_date == today).first()
-    my_remark = remark_record.remark if remark_record else ""
 
     return {
-        "yesterday_shop": yesterday_shop,
-        "today_shop": today_shop,
+        "yesterday_shop": get_shop_orders(yesterday),
         "today_my": today_my,
-        "my_remark": my_remark,
+        "my_remark": remark_record.remark if remark_record else "",
         "shop_name": shop_name
     }
 
@@ -288,27 +262,14 @@ def create_orders_batch(order_data: BatchOrderSubmit, db: Session = Depends(get_
     user_id = current_user["user_id"]
 
     try:
-        # 1. 处理商品数量
         for item in valid_items:
-            stmt = insert(Order).values(
-                user_id=user_id, product_id=item.product_id, order_date=today, 
-                quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity
-            )
-            stmt = stmt.on_conflict_do_update(
-                index_elements=['user_id', 'order_date', 'product_id'], 
-                set_=dict(quantity=stmt.excluded.quantity, return_quantity=stmt.excluded.return_quantity, stock_quantity=stmt.excluded.stock_quantity)
-            )
+            stmt = insert(Order).values(user_id=user_id, product_id=item.product_id, order_date=today, quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity)
+            stmt = stmt.on_conflict_do_update(index_elements=['user_id', 'order_date', 'product_id'], set_=dict(quantity=stmt.excluded.quantity, return_quantity=stmt.excluded.return_quantity, stock_quantity=stmt.excluded.stock_quantity))
             db.execute(stmt)
         
-        # 2. 处理缺货备注（只有填写了才更新）
         if order_data.remark is not None:
-            stmt_remark = insert(DailyRemark).values(
-                user_id=user_id, remark_date=today, remark=order_data.remark
-            )
-            stmt_remark = stmt_remark.on_conflict_do_update(
-                index_elements=['user_id', 'remark_date'],
-                set_=dict(remark=stmt_remark.excluded.remark)
-            )
+            stmt_remark = insert(DailyRemark).values(user_id=user_id, remark_date=today, remark=order_data.remark)
+            stmt_remark = stmt_remark.on_conflict_do_update(index_elements=['user_id', 'remark_date'], set_=dict(remark=stmt_remark.excluded.remark))
             db.execute(stmt_remark)
 
         db.commit()
@@ -327,8 +288,7 @@ def get_daily_summary(query_date: Optional[str] = None, shop_id: Optional[int] =
     if query_date:
         try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
         except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
-    else:
-        target_date = date.today()
+    else: target_date = date.today()
 
     query = db.query(
         Product.id.label("product_id"), Product.name.label("product_name"), Product.unit.label("unit"), 
@@ -339,7 +299,70 @@ def get_daily_summary(query_date: Optional[str] = None, shop_id: Optional[int] =
         query = query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
 
     results = query.group_by(Product.id, Product.name, Product.unit).all()
-    return {"date": str(target_date), "shop_id": shop_id, "summary": [{"product_id": r.product_id, "product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
+    return {"date": str(target_date), "summary": [{"product_id": r.product_id, "product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
+
+@app.get("/boss/product_detail")
+def get_product_detail(product_id: int, query_date: str, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
+    """查看某商品在某天的具体员工填报明细"""
+    try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
+    except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
+
+    query = db.query(
+        Order.id, User.name.label("user_name"), Order.quantity, Order.return_quantity, Order.stock_quantity
+    ).join(User, Order.user_id == User.id).filter(Order.product_id == product_id, Order.order_date == target_date)
+
+    if shop_id:
+        query = query.filter(User.shop_id == shop_id)
+
+    results = query.all()
+    return [{"id": r.id, "user_name": r.user_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity)} for r in results]
+
+@app.put("/boss/orders/{order_id}")
+def boss_update_order(order_id: int, order_data: OrderUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
+    """老板修改单个员工订单"""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order: raise HTTPException(status_code=404, detail="订单不存在")
+    
+    if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0:
+        db.delete(order)
+    else:
+        order.quantity = order_data.quantity
+        order.return_quantity = order_data.return_quantity
+        order.stock_quantity = order_data.stock_quantity
+    db.commit()
+    return {"message": "订单修改成功"}
+
+@app.delete("/boss/orders/{order_id}")
+def boss_delete_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
+    """老板删除单条员工订单"""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order: raise HTTPException(status_code=404, detail="订单不存在")
+    db.delete(order); db.commit()
+    return {"message": "订单已删除"}
+
+@app.get("/boss/unsubmitted")
+def get_unsubmitted_staff(query_date: Optional[str] = None, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
+    """查询指定日期未交单的店员名单"""
+    if query_date:
+        try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
+        except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
+    else: target_date = date.today()
+
+    # 查出所有相关店员
+    staff_query = db.query(User).filter(User.role == "staff")
+    if shop_id:
+        staff_query = staff_query.filter(User.shop_id == shop_id)
+    staffs = staff_query.all()
+
+    # 查出该日期已经交过单的 user_id
+    submitted_query = db.query(Order.user_id).filter(Order.order_date == target_date)
+    if shop_id:
+        submitted_query = submitted_query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
+    submitted_ids = {r.user_id for r in submitted_query.distinct().all()}
+
+    # 过滤出未交单的
+    unsubmitted = [{"id": s.id, "name": s.name, "shop_name": s.shop.name if s.shop else ""} for s in staffs if s.id not in submitted_ids]
+    return {"date": str(target_date), "unsubmitted": unsubmitted}
 
 # ================= 10. 管理员接口 =================
 @app.get("/admin/shops")

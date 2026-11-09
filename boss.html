@@ -6,93 +6,87 @@
     <title>老板看板 - 数据汇总</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 隐藏滚动条 */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 展开/收起动画 */
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-in-out; }
+        .accordion-content.open { max-height: 1000px; }
     </style>
 </head>
 <body class="bg-gray-100 h-screen flex flex-col font-sans antialiased text-gray-800">
 
-    <!-- 顶部控制台 (粘性) -->
+    <!-- 顶部控制台 -->
     <header class="bg-white shadow-sm sticky top-0 z-30 pt-3 pb-2 px-4 space-y-3">
-        <!-- 第一行：标题与操作 -->
         <div class="flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <span class="text-2xl">📊</span>
-                <h1 class="text-lg font-bold text-gray-800 tracking-wide">老板决策看板</h1>
+                <h1 class="text-lg font-bold text-gray-800 tracking-wide">老板看板</h1>
             </div>
             <div class="flex items-center space-x-2">
+                <!-- 催单按钮 -->
+                <button onclick="checkUnsubmitted()" class="text-xs text-white font-medium px-3 py-1.5 rounded-md bg-orange-500 shadow-sm">🔔 催单</button>
                 <button onclick="showPasswordModal()" class="text-xs text-blue-600 font-medium px-2 py-1.5 rounded-md bg-blue-50">改密</button>
                 <button onclick="logout()" class="text-xs text-red-500 font-medium px-2 py-1.5 rounded-md bg-red-50">退出</button>
             </div>
         </div>
 
-        <!-- 第二行：日期、门店、全显、筛选 -->
         <div class="flex items-center space-x-2 overflow-x-auto hide-scrollbar pb-1">
-            <!-- 日期选择 -->
             <div class="relative shrink-0">
                 <input type="date" id="datePicker" onchange="loadSummary()" class="pl-8 pr-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
-                    <span class="text-gray-400 text-sm">📅</span>
-                </div>
+                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none"><span class="text-gray-400 text-sm">📅</span></div>
             </div>
 
-            <!-- 门店下拉 -->
             <div class="relative shrink-0">
                 <select id="shopSelect" onchange="loadSummary()" class="pl-8 pr-6 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
                     <option value="">全部门店</option>
                 </select>
-                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
-                    <span class="text-gray-400 text-sm">🏪</span>
-                </div>
-                <!-- 下拉箭头 -->
-                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
+                <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none"><span class="text-gray-400 text-sm">🏪</span></div>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div>
             </div>
 
-            <!-- 全显按钮 -->
-            <button onclick="resetToAll()" class="shrink-0 bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium active:bg-gray-200">
-                🔄 全显
-            </button>
-
-            <!-- 筛选按钮 -->
-            <button onclick="openFilter()" class="shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium active:bg-indigo-700 flex items-center">
-                🎛️ 筛选
-            </button>
+            <button onclick="resetToAll()" class="shrink-0 bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium active:bg-gray-200">🔄 全显</button>
+            <button onclick="openFilter()" class="shrink-0 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium active:bg-indigo-700 flex items-center">🎛️ 筛选</button>
         </div>
     </header>
 
-    <!-- 主体内容 (卡片列表) -->
+    <!-- 主列表区 -->
     <main id="summaryList" class="flex-1 overflow-y-auto p-4 space-y-3 pb-10">
         <div class="text-center text-gray-400 py-10">加载中...</div>
     </main>
 
-    <!-- ================= 全屏筛选面板 ================= -->
+    <!-- 催单弹窗 -->
+    <div id="unsubmittedModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-orange-50 shrink-0">
+                <h3 class="text-lg font-bold text-orange-600">🔔 未交单提醒</h3>
+                <button onclick="closeUnsubmitted()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 space-y-2" id="unsubmittedList">
+                <!-- 动态渲染 -->
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 shrink-0">
+                <button onclick="copyUnsubmitted()" class="w-full bg-orange-500 text-white font-bold py-2 rounded-lg hover:bg-orange-600">📋 复制名单去催单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全屏筛选面板 -->
     <div id="filterPanel" class="fixed inset-0 bg-white z-50 flex flex-col transform translate-y-full transition-transform duration-300">
-        <!-- 面板头部 -->
         <div class="px-4 h-14 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
             <h2 class="text-lg font-bold text-gray-800">选择要查看的商品</h2>
             <button onclick="closeFilter()" class="text-gray-500 text-sm font-medium px-3 py-1.5 bg-gray-100 rounded-md">取消</button>
         </div>
-        <!-- 快捷操作 -->
         <div class="px-4 py-2 bg-gray-50 flex space-x-3 border-b border-gray-200 shrink-0">
             <button onclick="selectAllProducts(true)" class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm">全选</button>
             <button onclick="selectAllProducts(false)" class="text-xs bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm">全不选</button>
         </div>
-        <!-- 商品列表 (按分类) -->
-        <div id="filterList" class="flex-1 overflow-y-auto p-4 space-y-4">
-            <!-- JS 动态渲染 -->
-        </div>
-        <!-- 面板底部保存按钮 -->
+        <div id="filterList" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
         <div class="p-4 bg-white border-t border-gray-200 shrink-0">
-            <button onclick="saveFilter()" class="w-full bg-indigo-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-indigo-700">
-                保存并查看
-            </button>
+            <button onclick="saveFilter()" class="w-full bg-indigo-600 text-white font-bold text-lg py-3.5 rounded-xl active:bg-indigo-700">保存并查看</button>
         </div>
     </div>
 
-    <!-- 密码弹窗 (略去重复样式，直接复用) -->
+    <!-- 修改密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -116,13 +110,13 @@
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
 
-        // 全局状态
         let globalShops = [];
-        let allProducts = []; // 用于筛选面板
-        let summaryData = []; // 从后端拿到的汇总数据
-        let selectedProductIds = []; // 用户勾选的商品ID
+        let allProducts = [];
+        let summaryData = [];
+        let selectedProductIds = [];
+        let unsubmittedNames = []; // 用于保存未交单名单以便复制
 
-        // 1. 鉴权守卫
+        // 鉴权
         if (!token) { window.location.href = 'login.html'; }
         try {
             const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
@@ -133,46 +127,38 @@
 
         async function apiFetch(endpoint) {
             const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!res.ok) throw new Error("网络请求失败");
+            if (!res.ok) {
+                const d = await res.json();
+                throw new Error(d.detail || "网络请求失败");
+            }
             return await res.json();
         }
 
-        // ================= 初始化 =================
+        // 初始化
         window.onload = async () => {
-            // 初始化日期为今天
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('datePicker').value = today;
 
-            // 加载本地记住的筛选 ID
             const savedIds = localStorage.getItem('boss_filter_ids');
-            if (savedIds) {
-                selectedProductIds = JSON.parse(savedIds);
-            }
+            if (savedIds) selectedProductIds = JSON.parse(savedIds);
 
             try {
-                // 拉取门店列表
                 globalShops = await apiFetch('/boss/shops');
                 const shopSelect = document.getElementById('shopSelect');
-                globalShops.forEach(s => {
-                    shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-                });
+                globalShops.forEach(s => shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
 
-                // 拉取所有商品（用于筛选面板）
                 allProducts = await apiFetch('/products/active');
-
-                // 如果之前没保存过筛选，默认全选
                 if (selectedProductIds.length === 0 && savedIds === null) {
                     selectedProductIds = allProducts.map(p => p.id);
                 }
 
-                // 加载看板数据
                 loadSummary();
             } catch (e) {
                 document.getElementById('summaryList').innerHTML = `<div class="text-center text-red-500 mt-10">初始化失败: ${e.message}</div>`;
             }
         };
 
-        // ================= 加载与渲染看板 =================
+        // 加载汇总
         async function loadSummary() {
             const date = document.getElementById('datePicker').value;
             const shopId = document.getElementById('shopSelect').value;
@@ -193,8 +179,6 @@
 
         function renderSummary() {
             const mainContainer = document.getElementById('summaryList');
-            
-            // 根据勾选的 ID 过滤数据
             const displayData = summaryData.filter(item => selectedProductIds.includes(item.product_id));
 
             if (displayData.length === 0) {
@@ -203,52 +187,157 @@
             }
 
             mainContainer.innerHTML = displayData.map(item => `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between">
-                    <div class="flex flex-col">
-                        <span class="text-base font-bold text-gray-800">${item.product_name}</span>
-                        <span class="text-xs text-gray-400 mt-1">单位: ${item.unit}</span>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col mb-2 overflow-hidden">
+                    <!-- 汇总头部 (点击展开) -->
+                    <div class="p-4 flex items-center justify-between cursor-pointer active:bg-gray-50" onclick="toggleDetail(${item.product_id})">
+                        <div class="flex flex-col">
+                            <span class="text-base font-bold text-gray-800">${item.product_name}</span>
+                            <span class="text-xs text-gray-400 mt-1">单位: ${item.unit} <span class="text-indigo-500 ml-1">▼ 点击展开明细</span></span>
+                        </div>
+                        <div class="flex space-x-4 text-right">
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-gray-500">订货</span>
+                                <span class="text-lg font-bold text-blue-600">${item.total_quantity}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-gray-500">退货</span>
+                                <span class="text-lg font-bold text-orange-500">${item.total_return}</span>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-gray-500">库存</span>
+                                <span class="text-lg font-bold text-green-600">${item.total_stock}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex space-x-4 text-right">
-                        <div class="flex flex-col items-center">
-                            <span class="text-[10px] text-gray-500">订货</span>
-                            <span class="text-lg font-bold text-blue-600">${item.total_quantity}</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <span class="text-[10px] text-gray-500">退货</span>
-                            <span class="text-lg font-bold text-orange-500">${item.total_return}</span>
-                        </div>
-                        <div class="flex flex-col items-center">
-                            <span class="text-[10px] text-gray-500">库存</span>
-                            <span class="text-lg font-bold text-green-600">${item.total_stock}</span>
+                    <!-- 明细展开区 -->
+                    <div id="detail-${item.product_id}" class="accordion-content bg-gray-50 border-t border-gray-100">
+                        <div class="p-3 text-sm" id="detailContent-${item.product_id}">
+                            加载明细中...
                         </div>
                     </div>
                 </div>
             `).join('');
         }
 
-        // 全显按钮逻辑
+        // 展开明细
+        async function toggleDetail(productId) {
+            const contentDiv = document.getElementById(`detail-${productId}`);
+            const innerDiv = document.getElementById(`detailContent-${productId}`);
+            
+            if (contentDiv.classList.contains('open')) {
+                contentDiv.classList.remove('open');
+                return;
+            }
+            contentDiv.classList.add('open');
+
+            // 如果已经加载过就不重复请求
+            if (innerDiv.dataset.loaded === "true") return;
+
+            const date = document.getElementById('datePicker').value;
+            const shopId = document.getElementById('shopSelect').value;
+            let url = `/boss/product_detail?product_id=${productId}&query_date=${date}`;
+            if (shopId) url += `&shop_id=${shopId}`;
+
+            try {
+                const details = await apiFetch(url);
+                if (details.length === 0) {
+                    innerDiv.innerHTML = `<div class="text-center text-gray-400 text-xs py-2">暂无具体明细</div>`;
+                } else {
+                    innerDiv.innerHTML = details.map(d => `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
+                            <div class="font-medium text-gray-700 w-1/3 truncate">${d.user_name}</div>
+                            <div class="flex space-x-3 text-xs w-1/2 justify-end">
+                                <span>订:<strong class="text-blue-600">${d.quantity}</strong></span>
+                                <span>退:<strong class="text-orange-500">${d.return_quantity}</strong></span>
+                                <span>存:<strong class="text-green-600">${d.stock_quantity}</strong></span>
+                            </div>
+                            <div class="w-1/6 text-right space-x-2">
+                                <button onclick="editDetail(${d.id}, ${d.quantity}, ${d.return_quantity}, ${d.stock_quantity})" class="text-blue-500 text-xs">修改</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                innerDiv.dataset.loaded = "true";
+            } catch (e) {
+                innerDiv.innerHTML = `<div class="text-center text-red-500 text-xs py-2">加载失败</div>`;
+            }
+        }
+
+        // 老板直接修改明细
+        async function editDetail(orderId, oldQ, oldR, oldS) {
+            const q = prompt("修改【订货量】:", oldQ);
+            if (q === null) return;
+            const r = prompt("修改【退货量】:", oldR);
+            if (r === null) return;
+            const s = prompt("修改【库存量】:", oldS);
+            if (s === null) return;
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/boss/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ quantity: parseFloat(q)||0, return_quantity: parseFloat(r)||0, stock_quantity: parseFloat(s)||0 })
+                });
+                if (!res.ok) throw new Error("修改失败");
+                alert("修改成功！");
+                loadSummary(); // 刷新总汇总
+            } catch (e) { alert(e.message); }
+        }
+
+        // ================= 催单功能 =================
+        async function checkUnsubmitted() {
+            const date = document.getElementById('datePicker').value;
+            const shopId = document.getElementById('shopSelect').value;
+            let url = `/boss/unsubmitted?query_date=${date}`;
+            if (shopId) url += `&shop_id=${shopId}`;
+
+            try {
+                const data = await apiFetch(url);
+                const listDiv = document.getElementById('unsubmittedList');
+                unsubmittedNames = data.unsubmitted.map(u => u.name); // 保存名字
+
+                if (unsubmittedNames.length === 0) {
+                    listDiv.innerHTML = `<div class="text-center text-green-600 font-bold py-4">🎉 太棒了，所有店员都已交单！</div>`;
+                } else {
+                    listDiv.innerHTML = data.unsubmitted.map(u => `
+                        <div class="flex justify-between items-center bg-orange-50 text-orange-700 px-3 py-2 rounded-lg text-sm">
+                            <span class="font-medium">${u.name}</span>
+                            <span class="text-xs opacity-75">${u.shop_name}</span>
+                        </div>
+                    `).join('');
+                }
+                document.getElementById('unsubmittedModal').classList.remove('hidden');
+                document.getElementById('unsubmittedModal').classList.add('flex');
+            } catch (e) { alert(e.message); }
+        }
+
+        function closeUnsubmitted() {
+            document.getElementById('unsubmittedModal').classList.add('hidden');
+            document.getElementById('unsubmittedModal').classList.remove('flex');
+        }
+
+        function copyUnsubmitted() {
+            if (unsubmittedNames.length === 0) return;
+            const text = `【催单提醒】以下店员今日（${document.getElementById('datePicker').value}）尚未交单，请尽快填写：\n` + unsubmittedNames.join('、');
+            // 复制到剪贴板
+            navigator.clipboard.writeText(text).then(() => {
+                alert("名单已复制，快去微信群粘贴催单吧！");
+            }).catch(() => {
+                alert("复制失败，请手动选中复制");
+            });
+        }
+
+        // ================= 其它功能 =================
         function resetToAll() {
             document.getElementById('shopSelect').value = "";
             loadSummary();
         }
 
-        // ================= 筛选面板逻辑 =================
         const filterPanel = document.getElementById('filterPanel');
-
-        function openFilter() {
-            renderFilterList();
-            // 从底部滑出
-            filterPanel.classList.remove('translate-y-full');
-        }
-
-        function closeFilter() {
-            // 退回底部
-            filterPanel.classList.add('translate-y-full');
-        }
-
+        function openFilter() { renderFilterList(); filterPanel.classList.remove('translate-y-full'); }
+        function closeFilter() { filterPanel.classList.add('translate-y-full'); }
         function renderFilterList() {
             const container = document.getElementById('filterList');
-            // 按分类分组
             const grouped = allProducts.reduce((acc, p) => {
                 const cat = p.category || '其它';
                 if (!acc[cat]) acc[cat] = [];
@@ -264,49 +353,31 @@
                         <div class="grid grid-cols-2 gap-2">
                             ${products.map(p => {
                                 const isChecked = selectedProductIds.includes(p.id) ? 'checked' : '';
-                                return `
-                                    <label class="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-100 text-sm active:bg-gray-100">
-                                        <input type="checkbox" value="${p.id}" ${isChecked} class="filter-checkbox w-4 h-4 text-indigo-600 rounded">
-                                        <span class="truncate text-gray-700">${p.name}</span>
-                                    </label>
-                                `;
+                                return `<label class="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-100 text-sm active:bg-gray-100">
+                                    <input type="checkbox" value="${p.id}" ${isChecked} class="filter-checkbox w-4 h-4 text-indigo-600 rounded">
+                                    <span class="truncate text-gray-700">${p.name}</span>
+                                </label>`;
                             }).join('')}
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }
             container.innerHTML = html;
         }
-
         function selectAllProducts(isSelectAll) {
-            const checkboxes = document.querySelectorAll('.filter-checkbox');
-            checkboxes.forEach(cb => cb.checked = isSelectAll);
+            document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = isSelectAll);
         }
-
         function saveFilter() {
-            const checkboxes = document.querySelectorAll('.filter-checkbox');
             const newSelectedIds = [];
-            checkboxes.forEach(cb => {
+            document.querySelectorAll('.filter-checkbox').forEach(cb => {
                 if (cb.checked) newSelectedIds.push(parseInt(cb.value));
             });
-
-            // 如果啥都没选，就强制全选（防止老板自己把数据看空了）
-            if (newSelectedIds.length === 0) {
-                selectedProductIds = allProducts.map(p => p.id);
-                alert("您未勾选任何商品，已自动为您全选。");
-            } else {
-                selectedProductIds = newSelectedIds;
-            }
-
-            // 保存到本地
+            selectedProductIds = newSelectedIds.length === 0 ? allProducts.map(p => p.id) : newSelectedIds;
             localStorage.setItem('boss_filter_ids', JSON.stringify(selectedProductIds));
-            
-            // 关闭面板并重新渲染
             closeFilter();
             renderSummary();
         }
 
-        // ================= 修改密码逻辑 =================
+        // 密码修改
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
         function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
