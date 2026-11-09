@@ -23,10 +23,11 @@
     <aside class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-sm md:shadow-none">
         <div class="h-16 flex items-center px-6 border-b border-gray-100 hidden md:flex">
             <span class="text-2xl mr-2">⚙️</span>
-            <h1 class="text-lg font-bold text-gray-800 tracking-wide">管理员控制台</h1>
+            <h1 class="text-lg font-bold text-gray-800 tracking-wide">控制台</h1>
         </div>
         <nav class="flex md:flex-col overflow-x-auto md:overflow-x-hidden p-2 md:p-4 gap-2 flex-1">
             <button onclick="switchTab('users')" id="nav-users" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600">👥 用户与门店</button>
+            <button onclick="switchTab('categories')" id="nav-categories" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">🏷️ 分类管理</button>
             <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📦 商品管理</button>
             <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📝 订单管理</button>
         </nav>
@@ -42,7 +43,8 @@
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto">
-                <!-- 用户与门店 -->
+
+                <!-- 模块 1：用户与门店 -->
                 <div id="content-users" class="space-y-6">
                     <div class="flex flex-col md:flex-row gap-6">
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
@@ -77,43 +79,37 @@
                     </div>
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
                         <table class="w-full text-left responsive-table">
-                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
-                                <tr><th class="px-6 py-4">ID / 用户名</th><th class="px-6 py-4">角色</th><th class="px-6 py-4">所属门店</th><th class="px-6 py-4 text-right">操作</th></tr>
-                            </thead>
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase"><tr><th class="px-6 py-4">ID / 用户名</th><th class="px-6 py-4">角色</th><th class="px-6 py-4">所属门店</th><th class="px-6 py-4 text-right">操作</th></tr></thead>
                             <tbody id="userTableBody" class="divide-y divide-gray-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- 商品管理 -->
-                <div id="content-products" class="space-y-6 hidden">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3 items-end">
-                        <div class="flex-1 w-full">
-                            <label class="block text-xs text-gray-500 mb-1">商品名称</label>
-                            <input type="text" id="p-name" placeholder="商品名称" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                <!-- 🌟 模块 2：分类管理 -->
+                <div id="content-categories" class="space-y-6 hidden">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="font-bold text-gray-700 mb-4">新增分类</h3>
+                        <div class="flex gap-3">
+                            <input type="text" id="newCatName" placeholder="分类名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <button onclick="createCategory()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium">添加</button>
                         </div>
-                        <div class="w-full md:w-32">
-                            <label class="block text-xs text-gray-500 mb-1">单位</label>
-                            <input type="text" id="p-unit" placeholder="如: 斤" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                        </div>
-                        <div class="w-full md:w-40">
-                            <label class="block text-xs text-gray-500 mb-1">分类</label>
-                            <select id="p-category" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                                <option value="熟食肉类">熟食肉类</option>
-                                <option value="冻品内脏">冻品内脏</option>
-                                <option value="炸货下酒菜">炸货下酒菜</option>
-                                <option value="凉菜类">凉菜类</option>
-                                <option value="调辅料类">调辅料类</option>
-                                <option value="其它包材调料" selected>其它包材调料</option>
-                            </select>
-                        </div>
-                        <button onclick="createProduct()" class="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
                     </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div id="categoryList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    </div>
+                </div>
 
-                    <div class="flex gap-2">
-                        <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                        <button onclick="batchToggleProducts(true)" class="bg-green-600 text-white px-4 py-2 rounded-xl shadow-sm hover:bg-green-700 font-medium whitespace-nowrap text-sm">一键上架</button>
-                        <button onclick="batchToggleProducts(false)" class="bg-gray-500 text-white px-4 py-2 rounded-xl shadow-sm hover:bg-gray-600 font-medium whitespace-nowrap text-sm">一键下架</button>
+                <!-- 模块 3：商品管理 (清爽版) -->
+                <div id="content-products" class="space-y-6 hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="relative flex-1 w-full md:max-w-md">
+                            <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        </div>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <button onclick="batchToggleProducts(true)" class="flex-1 md:flex-none bg-green-600 text-white px-4 py-2.5 rounded-xl shadow-sm hover:bg-green-700 font-medium text-sm">一键上架</button>
+                            <button onclick="batchToggleProducts(false)" class="flex-1 md:flex-none bg-gray-500 text-white px-4 py-2.5 rounded-xl shadow-sm hover:bg-gray-600 font-medium text-sm">一键下架</button>
+                            <button onclick="openCreateProduct()" class="flex-1 md:flex-none bg-blue-600 text-white px-4 py-2.5 rounded-xl shadow-sm hover:bg-blue-700 font-medium text-sm">➕ 新增商品</button>
+                        </div>
                     </div>
 
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
@@ -126,7 +122,7 @@
                     </div>
                 </div>
 
-                <!-- 订单管理 -->
+                <!-- 模块 4：订单管理 -->
                 <div id="content-orders" class="space-y-6 hidden">
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
                         <table class="w-full text-left responsive-table">
@@ -141,15 +137,13 @@
         </main>
     </div>
 
-    <!-- 🌟 全局自定义危险操作确认弹窗 -->
+    <!-- 全局自定义危险操作确认弹窗 -->
     <div id="confirmActionModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div class="p-6 text-center">
-                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                    <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                </div>
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4"><svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirmTitle">危险操作</h3>
-                <p class="text-sm text-gray-500 mb-4" id="confirmMessage">确认要删除吗？此操作不可恢复。</p>
+                <p class="text-sm text-gray-500 mb-4" id="confirmMessage"></p>
                 <p class="text-xs text-red-500 font-bold mb-2">请在下方输入“删除”以确认操作：</p>
                 <input type="text" id="confirmInput" class="w-full px-4 py-2 border border-red-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none" placeholder="删除">
             </div>
@@ -160,100 +154,54 @@
         </div>
     </div>
 
-    <!-- 各种编辑弹窗（省略部分重复结构以节省空间，逻辑相同） -->
-    <!-- 1. 门店编辑 -->
+    <!-- 门店编辑 -->
     <div id="editShopModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">修改门店名称</h3>
-                <button onclick="closeEditShop()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
-            <div class="p-6">
-                <input type="hidden" id="edit-s-id">
-                <label class="block text-sm font-medium text-gray-700 mb-1">新门店名称</label>
-                <input type="text" id="edit-s-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="closeEditShop()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button onclick="submitEditShop()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button>
-            </div>
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改门店名称</h3><button onclick="closeEditShop()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
+            <div class="p-6"><input type="hidden" id="edit-s-id"><label class="block text-sm font-medium text-gray-700 mb-1">新门店名称</label><input type="text" id="edit-s-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditShop()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditShop()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div>
         </div>
     </div>
 
-    <!-- 2. 用户编辑 -->
+    <!-- 用户编辑 -->
     <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">编辑用户信息</h3>
-                <button onclick="closeEditUser()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">编辑用户信息</h3><button onclick="closeEditUser()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
             <div class="p-6 space-y-4">
-                <input type="hidden" id="edit-u-id">
-                <input type="hidden" id="edit-u-name">
+                <input type="hidden" id="edit-u-id"><input type="hidden" id="edit-u-name">
                 <div><label class="block text-xs text-gray-500 mb-1">用户名 (不可修改)</label><input type="text" id="edit-u-display" class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" readonly></div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">角色</label>
-                    <select id="edit-u-role" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="staff">店员 (staff)</option>
-                        <option value="boss">老板 (boss)</option>
-                        <option value="admin">管理员 (admin)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">所属门店</label>
-                    <select id="edit-u-shop" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="">-- 不绑定门店 --</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs text-gray-500 mb-1">重置密码 (留空则不修改)</label>
-                    <input type="password" id="edit-u-pass" placeholder="输入新密码" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                </div>
+                <div><label class="block text-xs text-gray-500 mb-1">角色</label><select id="edit-u-role" class="w-full px-3 py-2 border rounded-lg"><option value="staff">店员 (staff)</option><option value="boss">老板 (boss)</option><option value="admin">管理员 (admin)</option></select></div>
+                <div><label class="block text-xs text-gray-500 mb-1">所属门店</label><select id="edit-u-shop" class="w-full px-3 py-2 border rounded-lg"><option value="">-- 不绑定门店 --</option></select></div>
+                <div><label class="block text-xs text-gray-500 mb-1">重置密码 (留空则不修改)</label><input type="password" id="edit-u-pass" placeholder="输入新密码" class="w-full px-3 py-2 border rounded-lg"></div>
             </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="closeEditUser()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button onclick="submitEditUser()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button>
-            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditUser()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditUser()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button></div>
         </div>
     </div>
 
-    <!-- 3. 商品编辑 -->
-    <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+    <!-- 🌟 商品新增/编辑弹窗 (合并) -->
+    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">编辑商品信息</h3>
-                <button onclick="closeEditProduct()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h3 class="text-lg font-bold text-gray-800" id="productModalTitle">新增商品</h3>
+                <button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <input type="hidden" id="edit-p-id">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">商品名称</label><input type="text" id="edit-p-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">单位</label><input type="text" id="edit-p-unit" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                    <select id="edit-p-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="熟食肉类">熟食肉类</option>
-                        <option value="冻品内脏">冻品内脏</option>
-                        <option value="炸货下酒菜">炸货下酒菜</option>
-                        <option value="凉菜类">凉菜类</option>
-                        <option value="调辅料类">调辅料类</option>
-                        <option value="其它包材调料">其它包材调料</option>
-                    </select>
-                </div>
+                <input type="hidden" id="modal-p-id">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">商品名称</label><input type="text" id="modal-p-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">单位</label><input type="text" id="modal-p-unit" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="如: 斤 / 箱"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">分类</label><select id="modal-p-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></select></div>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="closeEditProduct()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button onclick="submitEditProduct()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button>
+                <button onclick="closeProductModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button onclick="submitProductModal()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. 订单编辑 -->
+    <!-- 订单编辑 -->
     <div id="editOrderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">修改订单数据</h3>
-                <button onclick="closeEditOrder()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改订单数据</h3><button onclick="closeEditOrder()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
             <div class="p-6 space-y-4">
                 <input type="hidden" id="edit-o-id">
                 <div class="grid grid-cols-3 gap-2">
@@ -263,30 +211,21 @@
                 </div>
                 <p class="text-xs text-gray-400 text-center">如果数据全填 0，则该条订单被删除。</p>
             </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="closeEditOrder()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button onclick="submitEditOrder()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button>
-            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditOrder()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditOrder()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div>
         </div>
     </div>
 
     <!-- 密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
-                <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
-            </div>
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改密码</h3><button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
             <div class="p-6 space-y-4">
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
-                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button>
-            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button></div>
         </div>
     </div>
 
@@ -294,8 +233,8 @@
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
         let globalShops = [];
+        let globalCategories = [];
         let allProductsData = [];
-        let allOrdersData = [];
         let sortableInstance = null;
         let confirmCallback = null;
 
@@ -325,40 +264,22 @@
             document.getElementById(`nav-${tabName}`).className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
         }
 
-        // 🌟 自定义防误触弹窗逻辑
+        // 防误触弹窗
         const confirmActionModal = document.getElementById('confirmActionModal');
         const confirmInput = document.getElementById('confirmInput');
         const confirmBtn = document.getElementById('confirmBtn');
-
-        confirmInput.addEventListener('input', (e) => {
-            confirmBtn.disabled = e.target.value !== '删除';
-        });
-
+        confirmInput.addEventListener('input', (e) => { confirmBtn.disabled = e.target.value !== '删除'; });
         function showCustomConfirm(title, message, callback) {
             document.getElementById('confirmTitle').textContent = title;
             document.getElementById('confirmMessage').textContent = message;
-            confirmInput.value = '';
-            confirmBtn.disabled = true;
-            confirmCallback = callback;
-            confirmActionModal.classList.remove('hidden');
-            confirmActionModal.classList.add('flex');
+            confirmInput.value = ''; confirmBtn.disabled = true; confirmCallback = callback;
+            confirmActionModal.classList.remove('hidden'); confirmActionModal.classList.add('flex');
             setTimeout(() => confirmInput.focus(), 100);
         }
+        function closeConfirmModal() { confirmActionModal.classList.add('hidden'); confirmActionModal.classList.remove('flex'); confirmCallback = null; }
+        async function executeConfirmAction() { if (confirmInput.value === '删除' && confirmCallback) { await confirmCallback(); closeConfirmModal(); } }
 
-        function closeConfirmModal() {
-            confirmActionModal.classList.add('hidden');
-            confirmActionModal.classList.remove('flex');
-            confirmCallback = null;
-        }
-
-        async function executeConfirmAction() {
-            if (confirmInput.value === '删除' && confirmCallback) {
-                await confirmCallback();
-                closeConfirmModal();
-            }
-        }
-
-        // ================= 门店与用户 =================
+        // ================= 门店 =================
         async function loadShops() {
             try {
                 globalShops = await apiFetch('/admin/shops');
@@ -366,14 +287,11 @@
                 const editShopSelect = document.getElementById('edit-u-shop');
                 shopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
                 editShopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
-                
                 globalShops.forEach(s => {
                     shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
                     editShopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
                 });
-
-                const shopList = document.getElementById('shopList');
-                shopList.innerHTML = globalShops.map(s => `
+                document.getElementById('shopList').innerHTML = globalShops.map(s => `
                     <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded border border-gray-100">
                         <span class="font-medium text-gray-700">${s.name}</span>
                         <div class="space-x-2">
@@ -384,44 +302,22 @@
                 `).join('');
             } catch (e) { console.error(e); }
         }
-
         async function createShop() {
             const name = document.getElementById('newShopName').value;
             if (!name) return alert("请输入门店名称");
             try { await apiFetch('/admin/shops', 'POST', { name }); document.getElementById('newShopName').value = ''; loadShops(); } catch (e) { alert(e.message); }
         }
-
         const editShopModal = document.getElementById('editShopModal');
-        function openEditShop(id, name) {
-            document.getElementById('edit-s-id').value = id;
-            document.getElementById('edit-s-name').value = name;
-            editShopModal.classList.remove('hidden');
-            editShopModal.classList.add('flex');
-        }
+        function openEditShop(id, name) { document.getElementById('edit-s-id').value = id; document.getElementById('edit-s-name').value = name; editShopModal.classList.remove('hidden'); editShopModal.classList.add('flex'); }
         function closeEditShop() { editShopModal.classList.add('hidden'); editShopModal.classList.remove('flex'); }
         async function submitEditShop() {
-            const id = document.getElementById('edit-s-id').value;
-            const name = document.getElementById('edit-s-name').value.trim();
+            const id = document.getElementById('edit-s-id').value; const name = document.getElementById('edit-s-name').value.trim();
             if (!name) return alert("名称不能为空");
-            try {
-                await apiFetch(`/admin/shops/${id}`, 'PUT', { name });
-                closeEditShop();
-                loadShops();
-                loadUsers(); 
-            } catch (e) { alert(e.message); }
+            try { await apiFetch(`/admin/shops/${id}`, 'PUT', { name }); closeEditShop(); loadShops(); loadUsers(); } catch (e) { alert(e.message); }
         }
+        function deleteShop(id, name) { showCustomConfirm('删除门店', `确定要删除门店【${name}】吗？`, async () => { try { await apiFetch(`/admin/shops/${id}`, 'DELETE'); loadShops(); } catch (e) { alert(e.message); } }); }
 
-        // 🌟 使用自定义弹窗拦截删除
-        function deleteShop(id, name) {
-            showCustomConfirm(
-                '删除门店', 
-                `确定要删除门店【${name}】吗？\n注意：如果门店下还有员工，将无法删除。`, 
-                async () => {
-                    try { await apiFetch(`/admin/shops/${id}`, 'DELETE'); loadShops(); } catch (e) { alert(e.message); }
-                }
-            );
-        }
-
+        // ================= 用户 =================
         async function loadUsers() {
             try {
                 const users = await apiFetch('/admin/users');
@@ -432,10 +328,7 @@
                     const roleBadge = u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'boss' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
-                            <td data-label="用户信息" class="px-6 py-4">
-                                <div class="font-bold text-gray-800">${u.name}</div>
-                                <div class="text-xs text-gray-400">ID: ${u.id}</div>
-                            </td>
+                            <td data-label="用户信息" class="px-6 py-4"><div class="font-bold text-gray-800">${u.name}</div><div class="text-xs text-gray-400">ID: ${u.id}</div></td>
                             <td data-label="角色" class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
                             <td data-label="所属门店" class="px-6 py-4 text-gray-600">${shopName}</td>
                             <td data-label="操作" class="px-6 py-4 text-right space-x-3">
@@ -447,68 +340,73 @@
                 });
             } catch (e) { alert(e.message); }
         }
-
         async function createUser() {
-            const name = document.getElementById('u-name').value;
-            const password = document.getElementById('u-pass').value;
-            const role = document.getElementById('u-role').value;
-            const shop_id = document.getElementById('u-shop').value;
+            const name = document.getElementById('u-name').value; const password = document.getElementById('u-pass').value; const role = document.getElementById('u-role').value; const shop_id = document.getElementById('u-shop').value;
             if (!name || !password) return alert("请填写用户名和密码");
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
-            try {
-                await apiFetch('/admin/users', 'POST', { name, password, role, shop_id: shop_id ? parseInt(shop_id) : null });
-                alert("创建成功"); document.getElementById('u-name').value = ''; document.getElementById('u-pass').value = ''; loadUsers();
-            } catch (e) { alert(e.message); }
+            try { await apiFetch('/admin/users', 'POST', { name, password, role, shop_id: shop_id ? parseInt(shop_id) : null }); alert("创建成功"); document.getElementById('u-name').value = ''; document.getElementById('u-pass').value = ''; loadUsers(); } catch (e) { alert(e.message); }
         }
-
         const editUserModal = document.getElementById('editUserModal');
         function openEditUser(id, name, role, shop_id) {
-            document.getElementById('edit-u-id').value = id;
-            document.getElementById('edit-u-name').value = name;
-            document.getElementById('edit-u-display').value = name;
-            document.getElementById('edit-u-role').value = role;
-            document.getElementById('edit-u-shop').value = shop_id || "";
-            document.getElementById('edit-u-pass').value = "";
+            document.getElementById('edit-u-id').value = id; document.getElementById('edit-u-name').value = name; document.getElementById('edit-u-display').value = name; document.getElementById('edit-u-role').value = role; document.getElementById('edit-u-shop').value = shop_id || ""; document.getElementById('edit-u-pass').value = "";
             editUserModal.classList.remove('hidden'); editUserModal.classList.add('flex');
         }
         function closeEditUser() { editUserModal.classList.add('hidden'); editUserModal.classList.remove('flex'); }
         async function submitEditUser() {
-            const id = document.getElementById('edit-u-id').value;
-            const name = document.getElementById('edit-u-name').value;
-            const role = document.getElementById('edit-u-role').value;
-            const shop_id = document.getElementById('edit-u-shop').value;
-            const password = document.getElementById('edit-u-pass').value;
+            const id = document.getElementById('edit-u-id').value; const name = document.getElementById('edit-u-name').value; const role = document.getElementById('edit-u-role').value; const shop_id = document.getElementById('edit-u-shop').value; const password = document.getElementById('edit-u-pass').value;
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
-            try {
-                await apiFetch(`/admin/users/${id}`, 'PUT', { name, role, shop_id: shop_id ? parseInt(shop_id) : null, password: password ? password : null });
-                closeEditUser(); loadUsers();
-            } catch (e) { alert(e.message); }
+            try { await apiFetch(`/admin/users/${id}`, 'PUT', { name, role, shop_id: shop_id ? parseInt(shop_id) : null, password: password ? password : null }); closeEditUser(); loadUsers(); } catch (e) { alert(e.message); }
         }
+        function deleteUser(userId, name) { showCustomConfirm('删除用户', `确定要删除用户【${name}】吗？`, async () => { try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); } }); }
 
-        function deleteUser(userId, name) {
-            showCustomConfirm(
-                '删除用户', 
-                `确定要删除用户【${name}】吗？此操作无法撤销。`, 
-                async () => {
-                    try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); }
-                }
-            );
+        // ================= 分类管理 =================
+        async function loadCategories() {
+            try {
+                globalCategories = await apiFetch('/admin/categories');
+                
+                // 更新分类列表UI
+                const list = document.getElementById('categoryList');
+                list.innerHTML = globalCategories.map(c => `
+                    <div class="flex justify-between items-center bg-gray-50 px-4 py-3 rounded-xl border border-gray-200">
+                        <span class="font-bold text-gray-700">${c.name}</span>
+                        <div class="space-x-3">
+                            <button onclick="editCategory(${c.id}, '${c.name}')" class="text-blue-500 text-sm font-medium hover:underline">改名</button>
+                            <button onclick="deleteCategory(${c.id}, '${c.name}')" class="text-red-500 text-sm font-medium hover:underline">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                // 更新商品下拉框
+                const select = document.getElementById('modal-p-category');
+                select.innerHTML = globalCategories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            } catch (e) { console.error(e); }
+        }
+        async function createCategory() {
+            const name = document.getElementById('newCatName').value.trim();
+            if (!name) return alert("请输入分类名称");
+            try { await apiFetch('/admin/categories', 'POST', { name }); document.getElementById('newCatName').value = ''; loadCategories(); } catch (e) { alert(e.message); }
+        }
+        async function editCategory(id, oldName) {
+            const newName = prompt("修改分类名称", oldName);
+            if (newName && newName !== oldName) {
+                try { await apiFetch(`/admin/categories/${id}`, 'PUT', { name: newName }); loadCategories(); loadProducts(); } catch (e) { alert(e.message); }
+            }
+        }
+        function deleteCategory(id, name) {
+            showCustomConfirm('删除分类', `确定删除分类【${name}】吗？\n如果该分类下还有商品，将无法删除。`, async () => {
+                try { await apiFetch(`/admin/categories/${id}`, 'DELETE'); loadCategories(); } catch (e) { alert(e.message); }
+            });
         }
 
         // ================= 商品管理 =================
         async function loadProducts() {
-            try {
-                allProductsData = await apiFetch('/admin/products');
-                renderProductTable(allProductsData);
-            } catch (e) { alert(e.message); }
+            try { allProductsData = await apiFetch('/admin/products'); renderProductTable(allProductsData); } catch (e) { alert(e.message); }
         }
-
         function filterProducts() {
             const keyword = document.getElementById('productSearch').value.trim().toLowerCase();
             const filtered = allProductsData.filter(p => p.name.toLowerCase().includes(keyword));
             renderProductTable(filtered);
         }
-
         function renderProductTable(products) {
             const tbody = document.getElementById('productTableBody');
             tbody.innerHTML = '';
@@ -536,14 +434,11 @@
             });
             initSortable();
         }
-
         function initSortable() {
             const tbody = document.getElementById('productTableBody');
             if (sortableInstance) { sortableInstance.destroy(); }
             sortableInstance = new Sortable(tbody, {
-                handle: '.drag-handle',
-                animation: 150,
-                ghostClass: 'bg-blue-50',
+                handle: '.drag-handle', animation: 150, ghostClass: 'bg-blue-50',
                 onEnd: async function (evt) {
                     const rows = tbody.querySelectorAll('tr');
                     const productIds = Array.from(rows).map(r => parseInt(r.dataset.id));
@@ -551,73 +446,57 @@
                 }
             });
         }
-
-        async function createProduct() {
-            const name = document.getElementById('p-name').value;
-            const unit = document.getElementById('p-unit').value;
-            const category = document.getElementById('p-category').value;
-            if(!name || !unit) return alert("请填写完整");
-            try {
-                await apiFetch('/admin/products', 'POST', { name, unit, category });
-                document.getElementById('p-name').value = ''; document.getElementById('p-unit').value = ''; loadProducts();
-            } catch(e) { alert(e.message); }
-        }
-
-        // 🌟 批量上下架
         async function batchToggleProducts(isActive) {
-            const action = isActive ? '全部上架' : '全部下架';
-            if (!confirm(`确定要将所有商品${action}吗？`)) return;
-            try {
-                await apiFetch('/admin/products/batch-toggle', 'POST', { is_active: isActive });
-                loadProducts();
-            } catch (e) { alert(e.message); }
+            if (!confirm(`确定要将所有商品${isActive ? '全部上架' : '全部下架'}吗？`)) return;
+            try { await apiFetch('/admin/products/batch-toggle', 'POST', { is_active: isActive }); loadProducts(); } catch (e) { alert(e.message); }
         }
 
-        const editModal = document.getElementById('editProductModal');
+        // 🌟 商品新增/编辑 合二为一
+        const productModal = document.getElementById('productModal');
+        function openCreateProduct() {
+            document.getElementById('productModalTitle').textContent = "新增商品";
+            document.getElementById('modal-p-id').value = "";
+            document.getElementById('modal-p-name').value = "";
+            document.getElementById('modal-p-unit').value = "";
+            productModal.classList.remove('hidden'); productModal.classList.add('flex');
+        }
         function openEditProduct(id) {
             const p = allProductsData.find(x => x.id === id);
             if (!p) return;
-            document.getElementById('edit-p-id').value = p.id;
-            document.getElementById('edit-p-name').value = p.name;
-            document.getElementById('edit-p-unit').value = p.unit;
-            document.getElementById('edit-p-category').value = p.category || '其它包材调料';
-            editModal.classList.remove('hidden'); editModal.classList.add('flex');
+            document.getElementById('productModalTitle').textContent = "编辑商品";
+            document.getElementById('modal-p-id').value = p.id;
+            document.getElementById('modal-p-name').value = p.name;
+            document.getElementById('modal-p-unit').value = p.unit;
+            document.getElementById('modal-p-category').value = p.category;
+            productModal.classList.remove('hidden'); productModal.classList.add('flex');
         }
-        function closeEditProduct() { editModal.classList.add('hidden'); editModal.classList.remove('flex'); }
-        async function submitEditProduct() {
-            const id = document.getElementById('edit-p-id').value;
-            const name = document.getElementById('edit-p-name').value.trim();
-            const unit = document.getElementById('edit-p-unit').value.trim();
-            const category = document.getElementById('edit-p-category').value;
+        function closeProductModal() { productModal.classList.add('hidden'); productModal.classList.remove('flex'); }
+        async function submitProductModal() {
+            const id = document.getElementById('modal-p-id').value;
+            const name = document.getElementById('modal-p-name').value.trim();
+            const unit = document.getElementById('modal-p-unit').value.trim();
+            const category = document.getElementById('modal-p-category').value;
             if (!name || !unit) return alert("名称和单位不能为空");
-            try { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); closeEditProduct(); loadProducts(); } catch (e) { alert(e.message); }
+            try {
+                if (id) { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); } 
+                else { await apiFetch('/admin/products', 'POST', { name, unit, category }); }
+                closeProductModal(); loadProducts();
+            } catch (e) { alert(e.message); }
         }
 
         async function toggleProduct(id) { try { await apiFetch(`/admin/products/${id}/toggle`, 'PUT'); loadProducts(); } catch(e) { alert(e.message); } }
-        
-        function deleteProduct(id, name) {
-            showCustomConfirm(
-                '删除商品', 
-                `确定要彻底删除商品【${name}】吗？如果该商品有历史订单，将无法删除。`, 
-                async () => {
-                    try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); }
-                }
-            );
-        }
+        function deleteProduct(id, name) { showCustomConfirm('删除商品', `确定要彻底删除【${name}】吗？`, async () => { try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); } }); }
 
         // ================= 订单管理 =================
         async function loadOrders() {
             try {
-                allOrdersData = await apiFetch('/admin/orders');
+                const orders = await apiFetch('/admin/orders');
                 const tbody = document.getElementById('orderTableBody');
                 tbody.innerHTML = '';
-                allOrdersData.forEach(o => {
+                orders.forEach(o => {
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
-                            <td data-label="日期/单号" class="px-6 py-4">
-                                <div class="font-medium text-gray-800">${o.date}</div>
-                                <div class="text-xs text-gray-400">ID: ${o.id}</div>
-                            </td>
+                            <td data-label="日期/单号" class="px-6 py-4"><div class="font-medium text-gray-800">${o.date}</div><div class="text-xs text-gray-400">ID: ${o.id}</div></td>
                             <td data-label="下单人" class="px-6 py-4 text-gray-600">${o.user_name}</td>
                             <td data-label="商品" class="px-6 py-4 font-medium text-gray-800">${o.product_name}</td>
                             <td data-label="数量" class="px-6 py-4 text-right space-x-2">
@@ -634,35 +513,16 @@
                 });
             } catch (e) { alert(e.message); }
         }
-
         const editOrderModal = document.getElementById('editOrderModal');
-        function openEditOrder(id, q, r, s) {
-            document.getElementById('edit-o-id').value = id;
-            document.getElementById('edit-o-q').value = q;
-            document.getElementById('edit-o-r').value = r;
-            document.getElementById('edit-o-s').value = s;
-            editOrderModal.classList.remove('hidden'); editOrderModal.classList.add('flex');
-        }
+        function openEditOrder(id, q, r, s) { document.getElementById('edit-o-id').value = id; document.getElementById('edit-o-q').value = q; document.getElementById('edit-o-r').value = r; document.getElementById('edit-o-s').value = s; editOrderModal.classList.remove('hidden'); editOrderModal.classList.add('flex'); }
         function closeEditOrder() { editOrderModal.classList.add('hidden'); editOrderModal.classList.remove('flex'); }
         async function submitEditOrder() {
-            const id = document.getElementById('edit-o-id').value;
-            const q = parseFloat(document.getElementById('edit-o-q').value) || 0;
-            const r = parseFloat(document.getElementById('edit-o-r').value) || 0;
-            const s = parseFloat(document.getElementById('edit-o-s').value) || 0;
+            const id = document.getElementById('edit-o-id').value; const q = parseFloat(document.getElementById('edit-o-q').value) || 0; const r = parseFloat(document.getElementById('edit-o-r').value) || 0; const s = parseFloat(document.getElementById('edit-o-s').value) || 0;
             try { await apiFetch(`/admin/orders/${id}`, 'PUT', { quantity: q, return_quantity: r, stock_quantity: s }); closeEditOrder(); loadOrders(); } catch (e) { alert(e.message); }
         }
+        function deleteOrder(id, productName) { showCustomConfirm('删除订单', `确定要删除订单【${productName}】吗？`, async () => { try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); } }); }
 
-        function deleteOrder(id, productName) {
-            showCustomConfirm(
-                '删除订单', 
-                `确定要删除订单【${productName}】吗？`, 
-                async () => {
-                    try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); }
-                }
-            );
-        }
-
-        // ================= 修改密码 =================
+        // 密码修改
         const pwdModal = document.getElementById('passwordModal');
         const pwdErrorMsg = document.getElementById('pwdErrorMsg');
         function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
@@ -681,7 +541,7 @@
         }
         function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
 
-        window.onload = async () => { await loadShops(); loadUsers(); loadProducts(); loadOrders(); };
+        window.onload = async () => { await loadShops(); await loadCategories(); loadUsers(); loadProducts(); loadOrders(); };
     </script>
 </body>
 </html>
