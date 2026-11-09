@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Numeric, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, Numeric, ForeignKey, func, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from sqlalchemy.dialects.postgresql import insert
 from pydantic import BaseModel
@@ -49,7 +49,7 @@ class Product(Base):
     name = Column(String(100), nullable=False)
     unit = Column(String(20), nullable=False)
     category = Column(String(50), default='其它')
-    sort_order = Column(Integer, default=0) # 排序权重
+    sort_order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     orders = relationship("Order", back_populates="product")
 
@@ -62,9 +62,17 @@ class Order(Base):
     quantity = Column(Numeric(12, 2), nullable=False, default=0)
     return_quantity = Column(Numeric(12, 2), nullable=False, default=0)
     stock_quantity = Column(Numeric(12, 2), nullable=False, default=0)
-    remark = Column(String(200))
     user = relationship("User", back_populates="orders")
     product = relationship("Product", back_populates="orders")
+
+# 每日缺货/补充备注表
+class DailyRemark(Base):
+    __tablename__ = "daily_remarks"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    remark_date = Column(Date, nullable=False, default=date.today)
+    remark = Column(String(500), nullable=True)
+    __table_args__ = (UniqueConstraint('user_id', 'remark_date', name='_user_date_remark_uc'),)
 
 Base.metadata.create_all(bind=engine)
 
@@ -100,7 +108,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return {"user_id": payload.get("user_id"), "role": payload.get("role"), "shop_id": payload.get("shop_id")}
+        return {"user_id": payload.get("user_id"), "role": payload.get("role"), "shop_id": payload.get("shop_id"), "name": payload.get("name")}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="登录已过期")
     except jwt.InvalidTokenError:
@@ -125,6 +133,10 @@ class OrderItemCreate(BaseModel):
     quantity: float = 0
     return_quantity: float = 0
     stock_quantity: float = 0
+
+class BatchOrderSubmit(BaseModel):
+    items: List[OrderItemCreate]
+    remark: Optional[str] = None
 
 class RoleUpdate(BaseModel):
     role: str
@@ -171,7 +183,7 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.name == user_data.name).first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
-    access_token = create_access_token(data={"user_id": user.id, "role": user.role, "shop_id": user.shop_id})
+    access_token = create_access_token(data={"user_id": user.id, "role": user.role, "shop_id": user.shop_id, "name": user.name})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/seed_data")
@@ -214,27 +226,83 @@ def admin_reset_other_password(pwd_data: AdminResetPasswordReq, db: Session = De
 # ================= 8. 店员接口 =================
 @app.get("/products/active")
 def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    # 按 sort_order 升序排序返回
     return db.query(Product).filter(Product.is_active == True).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
-@app.post("/orders/batch")
-def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
+@app.get("/staff/daily_history")
+def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
+    """获取门店昨天/今天汇总数据（用于提示），以及当前员工自己的数据（用于回显）"""
     today = date.today()
-    valid_items = [item for item in order_items if item.quantity > 0 or item.return_quantity > 0 or item.stock_quantity > 0]
-    if not valid_items: raise HTTPException(status_code=400, detail="未提供有效数量")
+    yesterday = today - timedelta(days=1)
+    user_id = current_user["user_id"]
+    shop_id = current_user["shop_id"]
+
+    # 1. 昨天【全店】汇总数据
+    y_results = db.query(
+        Order.product_id,
+        func.sum(Order.quantity).label("q"),
+        func.sum(Order.return_quantity).label("r"),
+        func.sum(Order.stock_quantity).label("s")
+    ).join(User, Order.user_id == User.id)\
+     .filter(User.shop_id == shop_id, Order.order_date == yesterday)\
+     .group_by(Order.product_id).all()
+    yesterday_shop = {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in y_results}
+
+    # 2. 今天【全店】汇总数据
+    t_results = db.query(
+        Order.product_id,
+        func.sum(Order.quantity).label("q"),
+        func.sum(Order.return_quantity).label("r"),
+        func.sum(Order.stock_quantity).label("s")
+    ).join(User, Order.user_id == User.id)\
+     .filter(User.shop_id == shop_id, Order.order_date == today)\
+     .group_by(Order.product_id).all()
+    today_shop = {str(r.product_id): {"quantity": float(r.q or 0), "return_quantity": float(r.r or 0), "stock_quantity": float(r.s or 0)} for r in t_results}
+
+    # 3. 今天【当前员工自己】填写的数据（用于安全回显输入框，避免覆盖别人的数据）
+    my_orders = db.query(Order).filter(Order.user_id == user_id, Order.order_date == today).all()
+    today_my = {str(o.product_id): {"quantity": float(o.quantity), "return_quantity": float(o.return_quantity), "stock_quantity": float(o.stock_quantity)} for o in my_orders}
+
+    # 4. 当前员工自己的备注信息
+    remark_record = db.query(DailyRemark).filter(DailyRemark.user_id == user_id, DailyRemark.remark_date == today).first()
+    my_remark = remark_record.remark if remark_record else ""
+
+    return {
+        "yesterday_shop": yesterday_shop,
+        "today_shop": today_shop,
+        "today_my": today_my,
+        "my_remark": my_remark
+    }
+
+@app.post("/orders/batch")
+def create_orders_batch(order_data: BatchOrderSubmit, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
+    today = date.today()
+    valid_items = [item for item in order_data.items if item.quantity > 0 or item.return_quantity > 0 or item.stock_quantity > 0]
+    user_id = current_user["user_id"]
 
     try:
+        # 1. 处理商品数量
         for item in valid_items:
             stmt = insert(Order).values(
-                user_id=current_user["user_id"], product_id=item.product_id, order_date=today, 
+                user_id=user_id, product_id=item.product_id, order_date=today, 
                 quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity
             )
-            # 覆盖模式：同一天同类商品直接更新数量，不累加
             stmt = stmt.on_conflict_do_update(
                 index_elements=['user_id', 'order_date', 'product_id'], 
                 set_=dict(quantity=stmt.excluded.quantity, return_quantity=stmt.excluded.return_quantity, stock_quantity=stmt.excluded.stock_quantity)
             )
             db.execute(stmt)
+        
+        # 2. 处理缺货备注（只有填写了才更新）
+        if order_data.remark is not None:
+            stmt_remark = insert(DailyRemark).values(
+                user_id=user_id, remark_date=today, remark=order_data.remark
+            )
+            stmt_remark = stmt_remark.on_conflict_do_update(
+                index_elements=['user_id', 'remark_date'],
+                set_=dict(remark=stmt_remark.excluded.remark)
+            )
+            db.execute(stmt_remark)
+
         db.commit()
         return {"status": "success", "message": f"成功提交 {len(valid_items)} 条数据"}
     except Exception as e:
@@ -244,67 +312,35 @@ def create_orders_batch(order_items: List[OrderItemCreate], db: Session = Depend
 # ================= 9. 老板接口 =================
 @app.get("/boss/shops")
 def boss_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
-    """获取所有门店列表（供老板端下拉框使用）"""
     return db.query(Shop).all()
 
 @app.get("/boss/daily_summary")
-def get_daily_summary(
-    query_date: Optional[str] = None,  # 格式 YYYY-MM-DD
-    shop_id: Optional[int] = None,     # 门店 ID
-    db: Session = Depends(get_db), 
-    current_user: dict = Depends(RoleChecker(["boss"]))
-):
-    # 1. 解析日期，默认今天
+def get_daily_summary(query_date: Optional[str] = None, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
     if query_date:
-        try:
-            target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="日期格式错误，应为 YYYY-MM-DD")
+        try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
+        except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
     else:
         target_date = date.today()
 
-    # 2. 构建基础查询
     query = db.query(
-        Product.id.label("product_id"),
-        Product.name.label("product_name"), 
-        Product.unit.label("unit"), 
-        func.sum(Order.quantity).label("total_quantity"),
-        func.sum(Order.return_quantity).label("total_return"),
-        func.sum(Order.stock_quantity).label("total_stock")
+        Product.id.label("product_id"), Product.name.label("product_name"), Product.unit.label("unit"), 
+        func.sum(Order.quantity).label("total_quantity"), func.sum(Order.return_quantity).label("total_return"), func.sum(Order.stock_quantity).label("total_stock")
     ).join(Order, Product.id == Order.product_id).filter(Order.order_date == target_date)
 
-    # 3. 如果传了门店 ID，则按门店过滤
     if shop_id:
         query = query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
 
-    # 4. 按商品分组汇总
     results = query.group_by(Product.id, Product.name, Product.unit).all()
-
-    return {
-        "date": str(target_date), 
-        "shop_id": shop_id,
-        "summary": [
-            {
-                "product_id": r.product_id,
-                "product_name": r.product_name, 
-                "unit": r.unit, 
-                "total_quantity": float(r.total_quantity or 0), 
-                "total_return": float(r.total_return or 0), 
-                "total_stock": float(r.total_stock or 0)
-            } for r in results
-        ]
-    }
+    return {"date": str(target_date), "shop_id": shop_id, "summary": [{"product_id": r.product_id, "product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
 
 # ================= 10. 管理员接口 =================
 @app.get("/admin/shops")
-def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    return db.query(Shop).all()
+def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Shop).all()
 
 @app.post("/admin/shops")
 def admin_create_shop(shop_data: ShopCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     if db.query(Shop).filter(Shop.name == shop_data.name).first(): raise HTTPException(status_code=400, detail="门店已存在")
-    db.add(Shop(name=shop_data.name)); db.commit()
-    return {"message": "门店创建成功"}
+    db.add(Shop(name=shop_data.name)); db.commit(); return {"message": "门店创建成功"}
 
 @app.get("/admin/users")
 def admin_get_users(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -314,15 +350,13 @@ def admin_get_users(db: Session = Depends(get_db), current_user: dict = Depends(
 def admin_create_user(user_data: UserCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     if db.query(User).filter(User.name == user_data.name).first(): raise HTTPException(status_code=400, detail="用户名已存在")
     db.add(User(name=user_data.name, role=user_data.role, shop_id=user_data.shop_id, hashed_password=get_password_hash(user_data.password)))
-    db.commit()
-    return {"message": "用户创建成功"}
+    db.commit(); return {"message": "用户创建成功"}
 
 @app.put("/admin/users/{user_id}/role")
 def admin_update_role(user_id: int, role_data: RoleUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user: raise HTTPException(status_code=404, detail="用户不存在")
-    user.role = role_data.role; user.shop_id = role_data.shop_id; db.commit()
-    return {"message": "用户信息已更新"}
+    user.role = role_data.role; user.shop_id = role_data.shop_id; db.commit(); return {"message": "用户信息已更新"}
 
 @app.delete("/admin/users/{user_id}")
 def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -334,37 +368,32 @@ def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user:
     return {"message": "用户已删除"}
 
 @app.get("/admin/products")
-def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
+def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
 
 @app.post("/admin/products")
 def admin_create_product(product_data: ProductCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     max_order = db.query(func.max(Product.sort_order)).scalar() or 0
     db.add(Product(name=product_data.name, unit=product_data.unit, category=product_data.category, sort_order=max_order + 1, is_active=True))
-    db.commit()
-    return {"message": "商品新增成功"}
+    db.commit(); return {"message": "商品新增成功"}
 
 @app.post("/admin/products/sort")
 def admin_sort_products(sort_data: SortRequest, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     for index, product_id in enumerate(sort_data.product_ids):
         db.query(Product).filter(Product.id == product_id).update({"sort_order": index})
-    db.commit()
-    return {"message": "排序已保存"}
+    db.commit(); return {"message": "排序已保存"}
 
 @app.put("/admin/products/{product_id}")
 def admin_update_product(product_id: int, prod_data: ProductUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product: raise HTTPException(status_code=404, detail="商品不存在")
     product.name = prod_data.name; product.unit = prod_data.unit; product.category = prod_data.category
-    db.commit()
-    return {"message": "商品更新成功"}
+    db.commit(); return {"message": "商品更新成功"}
 
 @app.put("/admin/products/{product_id}/toggle")
 def admin_toggle_product(product_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product: raise HTTPException(status_code=404, detail="商品不存在")
-    product.is_active = not product.is_active; db.commit()
-    return {"message": "状态已切换"}
+    product.is_active = not product.is_active; db.commit(); return {"message": "状态已切换"}
 
 @app.delete("/admin/products/{product_id}")
 def admin_delete_product(product_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
@@ -376,31 +405,23 @@ def admin_delete_product(product_id: int, db: Session = Depends(get_db), current
 
 @app.get("/admin/orders")
 def admin_get_orders(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    results = db.query(
-        Order.id, User.name.label("user_name"), Product.name.label("product_name"), 
-        Order.quantity, Order.return_quantity, Order.stock_quantity, Order.order_date
-    ).join(User, Order.user_id == User.id).join(Product, Order.product_id == Product.id).order_by(Order.order_date.desc(), Order.id.desc()).all()
+    results = db.query(Order.id, User.name.label("user_name"), Product.name.label("product_name"), Order.quantity, Order.return_quantity, Order.stock_quantity, Order.order_date).join(User, Order.user_id == User.id).join(Product, Order.product_id == Product.id).order_by(Order.order_date.desc(), Order.id.desc()).all()
     return [{"id": r.id, "user_name": r.user_name, "product_name": r.product_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity), "date": str(r.order_date)} for r in results]
 
 @app.put("/admin/orders/{order_id}")
 def admin_update_order(order_id: int, order_data: OrderUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order: raise HTTPException(status_code=404, detail="订单不存在")
-    if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0:
-        db.delete(order)
-    else:
-        order.quantity = order_data.quantity; order.return_quantity = order_data.return_quantity; order.stock_quantity = order_data.stock_quantity
-    db.commit()
-    return {"message": "订单已修改"}
+    if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0: db.delete(order)
+    else: order.quantity = order_data.quantity; order.return_quantity = order_data.return_quantity; order.stock_quantity = order_data.stock_quantity
+    db.commit(); return {"message": "订单已修改"}
 
 @app.delete("/admin/orders/{order_id}")
 def admin_delete_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order: raise HTTPException(status_code=404, detail="订单不存在")
-    db.delete(order); db.commit()
-    return {"message": "订单已删除"}
+    db.delete(order); db.commit(); return {"message": "订单已删除"}
 
-# ================= 启动入口 =================
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
