@@ -224,15 +224,19 @@ def admin_reset_other_password(pwd_data: AdminResetPasswordReq, db: Session = De
     return {"message": "密码重置成功"}
 
 # ================= 8. 店员接口 =================
+@app.get("/products/active")
+def get_active_products(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    return db.query(Product).filter(Product.is_active == True).order_by(Product.sort_order.asc(), Product.id.asc()).all()
+
 @app.get("/staff/daily_history")
 def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["staff"]))):
-    """一次性获取门店昨天/今天汇总数据，以及当前员工自己的数据"""
+    """获取门店昨天/今天汇总数据，以及当前员工自己的数据"""
     today = date.today()
     yesterday = today - timedelta(days=1)
     user_id = current_user["user_id"]
     shop_id = current_user["shop_id"]
 
-    # 🌟 新增：查询当前门店名称
+    # 查询当前门店名称
     shop_name = "未知门店"
     if shop_id:
         shop_info = db.query(Shop).filter(Shop.id == shop_id).first()
@@ -274,7 +278,7 @@ def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = 
         "today_shop": today_shop,
         "today_my": today_my,
         "my_remark": my_remark,
-        "shop_name": shop_name  # 🌟 返回门店名称
+        "shop_name": shop_name
     }
 
 @app.post("/orders/batch")
