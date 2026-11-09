@@ -365,6 +365,18 @@ def get_unsubmitted_staff(query_date: Optional[str] = None, shop_id: Optional[in
     return {"date": str(target_date), "unsubmitted": unsubmitted}
 
 # ================= 10. 管理员接口 =================
+@app.delete("/admin/shops/{shop_id}")
+def admin_delete_shop(shop_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+    if not shop: raise HTTPException(status_code=404, detail="门店不存在")
+    
+    # 安全检查：如果该门店下还有员工，则拒绝删除
+    if db.query(User).filter(User.shop_id == shop_id).first():
+        raise HTTPException(status_code=400, detail="该门店下还有员工，请先转移或删除员工后再试")
+        
+    db.delete(shop)
+    db.commit()
+    return {"message": "门店已删除"}
 @app.get("/admin/shops")
 def admin_get_shops(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Shop).all()
 

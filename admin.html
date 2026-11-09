@@ -5,12 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理员后台 - 订货系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入拖拽库 -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        /* 手机端隐藏表头，转为卡片样式 */
+        @media (max-width: 768px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tr { display: flex; flex-direction: column; margin-bottom: 1rem; border-radius: 0.75rem; border: 1px solid #e5e7eb; background: white; padding: 1rem; position: relative;}
+            .responsive-table td { display: flex; justify-content: space-between; align-items: center; border: none; padding: 0.5rem 0 !important; text-align: right;}
+            .responsive-table td::before { content: attr(data-label); font-weight: 500; color: #6b7280; text-align: left; margin-right: 1rem;}
+            .responsive-table td:last-child { margin-top: 0.5rem; border-top: 1px dashed #e5e7eb; padding-top: 1rem !important; justify-content: flex-end; }
+            .drag-handle { position: absolute; top: 1rem; left: 1rem; }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col md:flex-row font-sans antialiased text-gray-800 overflow-hidden">
 
-    <!-- 左侧侧边栏 -->
+    <!-- 左侧导航 -->
     <aside class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-sm md:shadow-none">
         <div class="h-16 flex items-center px-6 border-b border-gray-100 hidden md:flex">
             <span class="text-2xl mr-2">⚙️</span>
@@ -18,13 +28,13 @@
         </div>
         <nav class="flex md:flex-col overflow-x-auto md:overflow-x-hidden p-2 md:p-4 gap-2 flex-1">
             <button onclick="switchTab('users')" id="nav-users" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600">
-                用户与门店
+                👥 用户与门店
             </button>
-            <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap">
-                商品管理 (可拖拽)
+            <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+                📦 商品管理
             </button>
-            <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap">
-                订单管理
+            <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
+                📝 订单管理
             </button>
         </nav>
     </aside>
@@ -39,18 +49,26 @@
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto">
-                
+
                 <!-- 模块 1：用户与门店 -->
                 <div id="content-users" class="space-y-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <!-- 门店管理 -->
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
                             <h3 class="font-bold text-gray-700 mb-4">新增门店</h3>
-                            <div class="flex gap-3">
+                            <div class="flex gap-3 mb-6">
                                 <input type="text" id="newShopName" placeholder="门店名称" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <button onclick="createShop()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 font-medium">添加</button>
                             </div>
+                            
+                            <h3 class="font-bold text-gray-700 mb-2 border-t pt-4">已有门店</h3>
+                            <div id="shopList" class="space-y-2 max-h-40 overflow-y-auto">
+                                <!-- JS 渲染 -->
+                            </div>
                         </div>
-                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+
+                        <!-- 新增用户 -->
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
                             <h3 class="font-bold text-gray-700 mb-4">新增用户</h3>
                             <div class="space-y-3">
                                 <div class="flex gap-3">
@@ -71,8 +89,10 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table class="w-full text-left">
+
+                    <!-- 用户列表 (响应式) -->
+                    <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
+                        <table class="w-full text-left responsive-table">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
                                 <tr><th class="px-6 py-4">ID / 用户名</th><th class="px-6 py-4">角色</th><th class="px-6 py-4">所属门店</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
@@ -81,18 +101,18 @@
                     </div>
                 </div>
 
-                <!-- 模块 2：商品管理 (拖拽版) -->
+                <!-- 模块 2：商品管理 -->
                 <div id="content-products" class="space-y-6 hidden">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex gap-3 items-end">
-                        <div class="flex-1">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-3 items-end">
+                        <div class="flex-1 w-full">
                             <label class="block text-xs text-gray-500 mb-1">商品名称</label>
                             <input type="text" id="p-name" placeholder="商品名称" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                         </div>
-                        <div class="w-32">
-                            <label class="block text-xs text-gray-500 mb-1">单位 (如: 斤)</label>
-                            <input type="text" id="p-unit" placeholder="单位" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div class="w-full md:w-32">
+                            <label class="block text-xs text-gray-500 mb-1">单位</label>
+                            <input type="text" id="p-unit" placeholder="如: 斤" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                         </div>
-                        <div class="w-40">
+                        <div class="w-full md:w-40">
                             <label class="block text-xs text-gray-500 mb-1">分类</label>
                             <select id="p-category" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg">
                                 <option value="熟食肉类">熟食肉类</option>
@@ -103,15 +123,16 @@
                                 <option value="其它包材调料" selected>其它包材调料</option>
                             </select>
                         </div>
-                        <button onclick="createProduct()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
+                        <button onclick="createProduct()" class="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
                     </div>
 
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 bg-yellow-50 text-yellow-700 text-sm flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            按住左侧的 <strong>≡</strong> 图标上下拖拽，即可改变店员手机上的商品显示顺序。松手后自动保存。
-                        </div>
-                        <table class="w-full text-left">
+                    <!-- 搜索框 -->
+                    <div class="relative">
+                        <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    </div>
+
+                    <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
+                        <table class="w-full text-left responsive-table">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
                                 <tr><th class="w-12 px-4 py-4"></th><th class="px-4 py-4">商品名 / 分类</th><th class="px-6 py-4">单位</th><th class="px-6 py-4">状态</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
@@ -122,8 +143,8 @@
 
                 <!-- 模块 3：订单管理 -->
                 <div id="content-orders" class="space-y-6 hidden">
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table class="w-full text-left">
+                    <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
+                        <table class="w-full text-left responsive-table">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
                                 <tr><th class="px-6 py-4">日期 / 单号</th><th class="px-6 py-4">下单人</th><th class="px-6 py-4">商品</th><th class="px-6 py-4 text-right">订 / 退 / 存</th><th class="px-6 py-4 text-right">操作</th></tr>
                             </thead>
@@ -136,22 +157,52 @@
         </main>
     </div>
 
+    <!-- 商品编辑弹窗 -->
+    <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">编辑商品信息</h3>
+                <button onclick="closeEditProduct()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-p-id">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">商品名称</label><input type="text" id="edit-p-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">单位</label><input type="text" id="edit-p-unit" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
+                    <select id="edit-p-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="熟食肉类">熟食肉类</option>
+                        <option value="冻品内脏">冻品内脏</option>
+                        <option value="炸货下酒菜">炸货下酒菜</option>
+                        <option value="凉菜类">凉菜类</option>
+                        <option value="调辅料类">调辅料类</option>
+                        <option value="其它包材调料">其它包材调料</option>
+                    </select>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="closeEditProduct()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button onclick="submitEditProduct()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
                 <h3 class="text-lg font-bold text-gray-800">修改密码</h3>
                 <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">取消</button>
-                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">确认修改</button>
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button>
             </div>
         </div>
     </div>
@@ -160,6 +211,7 @@
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
         let globalShops = [];
+        let allProductsData = []; // 保存原始商品数据用于搜索
         let sortableInstance = null;
 
         if (!token) { window.location.href = 'login.html'; }
@@ -179,12 +231,12 @@
             return data;
         }
 
-        // ================= 侧边栏切换 =================
+        // 侧边栏切换
         function switchTab(tabName) {
             document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${tabName}`).classList.remove('hidden');
             document.querySelectorAll('.nav-item').forEach(el => {
-                el.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors whitespace-nowrap";
+                el.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap";
             });
             document.getElementById(`nav-${tabName}`).className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
         }
@@ -193,9 +245,19 @@
         async function loadShops() {
             try {
                 globalShops = await apiFetch('/admin/shops');
+                // 更新新增用户的下拉框
                 const shopSelect = document.getElementById('u-shop');
                 shopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
-                globalShops.forEach(s => { shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
+                globalShops.forEach(s => shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+
+                // 更新门店列表（带删除按钮）
+                const shopList = document.getElementById('shopList');
+                shopList.innerHTML = globalShops.map(s => `
+                    <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded border border-gray-100">
+                        <span class="font-medium text-gray-700">${s.name}</span>
+                        <button onclick="deleteShop(${s.id}, '${s.name}')" class="text-red-500 text-xs hover:underline">删除</button>
+                    </div>
+                `).join('');
             } catch (e) { console.error(e); }
         }
 
@@ -205,20 +267,32 @@
             try { await apiFetch('/admin/shops', 'POST', { name }); document.getElementById('newShopName').value = ''; loadShops(); } catch (e) { alert(e.message); }
         }
 
+        async function deleteShop(id, name) {
+            if (!confirm(`确定要删除门店【${name}】吗？\n\n注意：如果门店下还有员工，将无法删除。`)) return;
+            try {
+                await apiFetch(`/admin/shops/${id}`, 'DELETE');
+                alert("删除成功");
+                loadShops();
+            } catch (e) { alert(e.message); }
+        }
+
         async function loadUsers() {
             try {
                 const users = await apiFetch('/admin/users');
                 const tbody = document.getElementById('userTableBody');
                 tbody.innerHTML = '';
                 users.forEach(u => {
-                    const shopName = globalShops.find(s => s.id === u.shop_id)?.name || '<span class="text-gray-300">无</span>';
+                    const shopName = globalShops.find(s => s.id === u.shop_id)?.name || '<span class="text-gray-400">无</span>';
                     const roleBadge = u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'boss' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4"><div class="font-bold text-gray-800">${u.name}</div><div class="text-xs text-gray-400">ID: ${u.id}</div></td>
-                            <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
-                            <td class="px-6 py-4 text-gray-600">${shopName}</td>
-                            <td class="px-6 py-4 text-right space-x-3">
+                            <td data-label="用户信息" class="px-6 py-4">
+                                <div class="font-bold text-gray-800">${u.name}</div>
+                                <div class="text-xs text-gray-400">ID: ${u.id}</div>
+                            </td>
+                            <td data-label="角色" class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
+                            <td data-label="所属门店" class="px-6 py-4 text-gray-600">${shopName}</td>
+                            <td data-label="操作" class="px-6 py-4 text-right space-x-3">
                                 <button onclick="resetUserPwd(${u.id})" class="text-orange-500 font-medium">重置密码</button>
                                 <button onclick="deleteUser(${u.id})" class="text-red-500 font-medium">删除</button>
                             </td>
@@ -251,41 +325,50 @@
             try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch(e) { alert(e.message); }
         }
 
-        // ================= 商品管理 (拖拽) =================
+        // ================= 商品管理 =================
         async function loadProducts() {
             try {
-                const products = await apiFetch('/admin/products');
-                const tbody = document.getElementById('productTableBody');
-                tbody.innerHTML = '';
-                products.forEach(p => {
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-gray-50 group" data-id="${p.id}">
-                            <td class="px-4 py-4 cursor-grab text-gray-400 hover:text-gray-800 drag-handle">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="font-bold text-gray-800">${p.name}</div>
-                                <div class="text-xs text-blue-500 mt-0.5">${p.category}</div>
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">${p.unit}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
-                                    ${p.is_active ? '上架中' : '已下架'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-right space-x-3">
-                                <button onclick="editProduct(${p.id}, '${p.name}', '${p.unit}', '${p.category}')" class="text-blue-500 font-medium">编辑</button>
-                                <button onclick="toggleProduct(${p.id})" class="text-orange-500 font-medium">${p.is_active ? '下架' : '上架'}</button>
-                                <button onclick="deleteProduct(${p.id})" class="text-red-500 font-medium">删除</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-                initSortable(); // 每次渲染完初始化拖拽
+                allProductsData = await apiFetch('/admin/products');
+                renderProductTable(allProductsData);
             } catch (e) { alert(e.message); }
         }
 
-        // 🌟 初始化拖拽
+        function filterProducts() {
+            const keyword = document.getElementById('productSearch').value.trim().toLowerCase();
+            const filtered = allProductsData.filter(p => p.name.toLowerCase().includes(keyword));
+            renderProductTable(filtered);
+        }
+
+        function renderProductTable(products) {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 group relative" data-id="${p.id}">
+                        <td class="px-4 py-4 cursor-grab text-gray-400 hover:text-gray-800 drag-handle" data-label="">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                        </td>
+                        <td class="px-4 py-4 pl-10 md:pl-4" data-label="商品">
+                            <div class="font-bold text-gray-800">${p.name}</div>
+                            <div class="text-xs text-blue-500 mt-0.5">${p.category}</div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500" data-label="单位">${p.unit}</td>
+                        <td class="px-6 py-4" data-label="状态">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+                                ${p.is_active ? '上架中' : '已下架'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-3">
+                            <button onclick="openEditProduct(${p.id})" class="text-blue-500 font-medium">编辑</button>
+                            <button onclick="toggleProduct(${p.id})" class="text-orange-500 font-medium">${p.is_active ? '下架' : '上架'}</button>
+                            <button onclick="deleteProduct(${p.id})" class="text-red-500 font-medium">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            initSortable();
+        }
+
         function initSortable() {
             const tbody = document.getElementById('productTableBody');
             if (sortableInstance) { sortableInstance.destroy(); }
@@ -294,14 +377,10 @@
                 animation: 150,
                 ghostClass: 'bg-blue-50',
                 onEnd: async function (evt) {
-                    // 拖拽结束后，收集当前所有 ID 的新顺序
                     const rows = tbody.querySelectorAll('tr');
                     const productIds = Array.from(rows).map(r => parseInt(r.dataset.id));
-                    
-                    // 发送给后端
                     try {
                         await apiFetch('/admin/products/sort', 'POST', { product_ids: productIds });
-                        console.log("排序已保存");
                     } catch (e) { alert("排序保存失败: " + e.message); loadProducts(); }
                 }
             });
@@ -320,15 +399,36 @@
             } catch(e) { alert(e.message); }
         }
 
-        async function editProduct(id, oldName, oldUnit, oldCat) {
-            const name = prompt("修改商品名称:", oldName);
-            if (name === null) return;
-            const unit = prompt("修改单位 (如: 斤 / 箱):", oldUnit);
-            if (unit === null) return;
-            const category = prompt("修改分类:\n熟食肉类 / 冻品内脏 / 炸货下酒菜 / 凉菜类 / 调辅料类 / 其它包材调料", oldCat);
-            if (category === null) return;
-            
-            try { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); loadProducts(); } catch(e) { alert(e.message); }
+        // 商品编辑弹窗逻辑
+        const editModal = document.getElementById('editProductModal');
+        function openEditProduct(id) {
+            const p = allProductsData.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('edit-p-id').value = p.id;
+            document.getElementById('edit-p-name').value = p.name;
+            document.getElementById('edit-p-unit').value = p.unit;
+            document.getElementById('edit-p-category').value = p.category || '其它包材调料';
+            editModal.classList.remove('hidden');
+            editModal.classList.add('flex');
+        }
+
+        function closeEditProduct() {
+            editModal.classList.add('hidden');
+            editModal.classList.remove('flex');
+        }
+
+        async function submitEditProduct() {
+            const id = document.getElementById('edit-p-id').value;
+            const name = document.getElementById('edit-p-name').value.trim();
+            const unit = document.getElementById('edit-p-unit').value.trim();
+            const category = document.getElementById('edit-p-category').value;
+            if (!name || !unit) return alert("名称和单位不能为空");
+
+            try {
+                await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category });
+                closeEditProduct();
+                loadProducts();
+            } catch (e) { alert(e.message); }
         }
 
         async function toggleProduct(id) {
@@ -349,10 +449,13 @@
                 orders.forEach(o => {
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4"><div class="font-medium text-gray-800">${o.date}</div><div class="text-xs text-gray-400">单号: ${o.id}</div></td>
-                            <td class="px-6 py-4 text-gray-600">${o.user_name}</td>
-                            <td class="px-6 py-4 font-medium text-gray-800">${o.product_name}</td>
-                            <td class="px-6 py-4 text-right space-x-2">
+                            <td data-label="日期/单号" class="px-6 py-4">
+                                <div class="font-medium text-gray-800">${o.date}</div>
+                                <div class="text-xs text-gray-400">ID: ${o.id}</div>
+                            </td>
+                            <td data-label="下单人" class="px-6 py-4 text-gray-600">${o.user_name}</td>
+                            <td data-label="商品" class="px-6 py-4 font-medium text-gray-800">${o.product_name}</td>
+                            <td data-label="数量" class="px-6 py-4 text-right space-x-2">
                                 <span class="text-blue-600 font-bold">订:${o.quantity}</span>
                                 <span class="text-orange-500 font-bold">退:${o.return_quantity}</span>
                                 <span class="text-green-600 font-bold">存:${o.stock_quantity}</span>
@@ -388,7 +491,7 @@
         }
         function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
 
-        // ================= 初始化 =================
+        // 初始化
         window.onload = async () => { await loadShops(); loadUsers(); loadProducts(); loadOrders(); };
     </script>
 </body>
