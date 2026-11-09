@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
-        /* 手机端隐藏表头，转为卡片样式 */
         @media (max-width: 768px) {
             .responsive-table thead { display: none; }
             .responsive-table tr { display: flex; flex-direction: column; margin-bottom: 1rem; border-radius: 0.75rem; border: 1px solid #e5e7eb; background: white; padding: 1rem; position: relative;}
@@ -15,27 +14,21 @@
             .responsive-table td::before { content: attr(data-label); font-weight: 500; color: #6b7280; text-align: left; margin-right: 1rem;}
             .responsive-table td:last-child { margin-top: 0.5rem; border-top: 1px dashed #e5e7eb; padding-top: 1rem !important; justify-content: flex-end; }
             .drag-handle { position: absolute; top: 1rem; left: 1rem; }
+            .responsive-table td[data-label=""] { display: none; } /* 手机端隐藏拖拽图标占位 */
         }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex flex-col md:flex-row font-sans antialiased text-gray-800 overflow-hidden">
 
-    <!-- 左侧导航 -->
     <aside class="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-sm md:shadow-none">
         <div class="h-16 flex items-center px-6 border-b border-gray-100 hidden md:flex">
             <span class="text-2xl mr-2">⚙️</span>
             <h1 class="text-lg font-bold text-gray-800 tracking-wide">管理员控制台</h1>
         </div>
         <nav class="flex md:flex-col overflow-x-auto md:overflow-x-hidden p-2 md:p-4 gap-2 flex-1">
-            <button onclick="switchTab('users')" id="nav-users" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600">
-                👥 用户与门店
-            </button>
-            <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
-                📦 商品管理
-            </button>
-            <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">
-                📝 订单管理
-            </button>
+            <button onclick="switchTab('users')" id="nav-users" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600">👥 用户与门店</button>
+            <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📦 商品管理</button>
+            <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📝 订单管理</button>
         </nav>
     </aside>
 
@@ -62,7 +55,7 @@
                             </div>
                             
                             <h3 class="font-bold text-gray-700 mb-2 border-t pt-4">已有门店</h3>
-                            <div id="shopList" class="space-y-2 max-h-40 overflow-y-auto">
+                            <div id="shopList" class="space-y-2 max-h-48 overflow-y-auto">
                                 <!-- JS 渲染 -->
                             </div>
                         </div>
@@ -90,7 +83,7 @@
                         </div>
                     </div>
 
-                    <!-- 用户列表 (响应式) -->
+                    <!-- 用户列表 -->
                     <div class="bg-white md:rounded-2xl shadow-sm border-0 md:border md:border-gray-100 md:overflow-hidden">
                         <table class="w-full text-left responsive-table">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
@@ -126,7 +119,6 @@
                         <button onclick="createProduct()" class="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium h-[42px]">新增商品</button>
                     </div>
 
-                    <!-- 搜索框 -->
                     <div class="relative">
                         <input type="text" id="productSearch" oninput="filterProducts()" placeholder="🔍 搜索商品名称..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 shadow-sm">
                     </div>
@@ -157,7 +149,63 @@
         </main>
     </div>
 
-    <!-- 商品编辑弹窗 -->
+    <!-- 1. 门店编辑弹窗 -->
+    <div id="editShopModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">修改门店名称</h3>
+                <button onclick="closeEditShop()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6">
+                <input type="hidden" id="edit-s-id">
+                <label class="block text-sm font-medium text-gray-700 mb-1">新门店名称</label>
+                <input type="text" id="edit-s-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="closeEditShop()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button onclick="submitEditShop()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 用户编辑弹窗 -->
+    <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">编辑用户信息</h3>
+                <button onclick="closeEditUser()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-u-id">
+                <input type="hidden" id="edit-u-name">
+                <div><label class="block text-xs text-gray-500 mb-1">用户名 (不可修改)</label><input type="text" id="edit-u-display" class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" readonly></div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">角色</label>
+                    <select id="edit-u-role" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="staff">店员 (staff)</option>
+                        <option value="boss">老板 (boss)</option>
+                        <option value="admin">管理员 (admin)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">所属门店</label>
+                    <select id="edit-u-shop" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- 不绑定门店 --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">重置密码 (留空则不修改)</label>
+                    <input type="password" id="edit-u-pass" placeholder="输入新密码" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="closeEditUser()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button onclick="submitEditUser()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 商品编辑弹窗 -->
     <div id="editProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -187,6 +235,29 @@
         </div>
     </div>
 
+    <!-- 4. 订单编辑弹窗 -->
+    <div id="editOrderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">修改订单数据</h3>
+                <button onclick="closeEditOrder()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-o-id">
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="block text-xs text-center text-gray-500 mb-1">订货量</label><input type="number" id="edit-o-q" class="w-full px-2 py-2 border rounded-lg text-center"></div>
+                    <div><label class="block text-xs text-center text-gray-500 mb-1">退货量</label><input type="number" id="edit-o-r" class="w-full px-2 py-2 border rounded-lg text-center"></div>
+                    <div><label class="block text-xs text-center text-gray-500 mb-1">库存量</label><input type="number" id="edit-o-s" class="w-full px-2 py-2 border rounded-lg text-center"></div>
+                </div>
+                <p class="text-xs text-gray-400 text-center">如果数据全填 0，则该条订单被删除。</p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button onclick="closeEditOrder()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button>
+                <button onclick="submitEditOrder()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 密码弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -211,7 +282,8 @@
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
         const token = localStorage.getItem('jwt_token');
         let globalShops = [];
-        let allProductsData = []; // 保存原始商品数据用于搜索
+        let allProductsData = [];
+        let allOrdersData = [];
         let sortableInstance = null;
 
         if (!token) { window.location.href = 'login.html'; }
@@ -231,7 +303,6 @@
             return data;
         }
 
-        // 侧边栏切换
         function switchTab(tabName) {
             document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${tabName}`).classList.remove('hidden');
@@ -245,17 +316,24 @@
         async function loadShops() {
             try {
                 globalShops = await apiFetch('/admin/shops');
-                // 更新新增用户的下拉框
                 const shopSelect = document.getElementById('u-shop');
+                const editShopSelect = document.getElementById('edit-u-shop');
                 shopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
-                globalShops.forEach(s => shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+                editShopSelect.innerHTML = '<option value="">-- 不绑定门店 --</option>';
+                
+                globalShops.forEach(s => {
+                    shopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                    editShopSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
 
-                // 更新门店列表（带删除按钮）
                 const shopList = document.getElementById('shopList');
                 shopList.innerHTML = globalShops.map(s => `
                     <div class="flex justify-between items-center bg-gray-50 px-3 py-2 rounded border border-gray-100">
                         <span class="font-medium text-gray-700">${s.name}</span>
-                        <button onclick="deleteShop(${s.id}, '${s.name}')" class="text-red-500 text-xs hover:underline">删除</button>
+                        <div class="space-x-2">
+                            <button onclick="openEditShop(${s.id}, '${s.name}')" class="text-blue-500 text-xs hover:underline">改名</button>
+                            <button onclick="deleteShop(${s.id}, '${s.name}')" class="text-red-500 text-xs hover:underline">删除</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (e) { console.error(e); }
@@ -267,13 +345,30 @@
             try { await apiFetch('/admin/shops', 'POST', { name }); document.getElementById('newShopName').value = ''; loadShops(); } catch (e) { alert(e.message); }
         }
 
+        // 🌟 门店改名逻辑
+        const editShopModal = document.getElementById('editShopModal');
+        function openEditShop(id, name) {
+            document.getElementById('edit-s-id').value = id;
+            document.getElementById('edit-s-name').value = name;
+            editShopModal.classList.remove('hidden');
+            editShopModal.classList.add('flex');
+        }
+        function closeEditShop() { editShopModal.classList.add('hidden'); editShopModal.classList.remove('flex'); }
+        async function submitEditShop() {
+            const id = document.getElementById('edit-s-id').value;
+            const name = document.getElementById('edit-s-name').value.trim();
+            if (!name) return alert("名称不能为空");
+            try {
+                await apiFetch(`/admin/shops/${id}`, 'PUT', { name });
+                closeEditShop();
+                loadShops();
+                loadUsers(); // 刷新用户列表里的门店名称
+            } catch (e) { alert(e.message); }
+        }
+
         async function deleteShop(id, name) {
             if (!confirm(`确定要删除门店【${name}】吗？\n\n注意：如果门店下还有员工，将无法删除。`)) return;
-            try {
-                await apiFetch(`/admin/shops/${id}`, 'DELETE');
-                alert("删除成功");
-                loadShops();
-            } catch (e) { alert(e.message); }
+            try { await apiFetch(`/admin/shops/${id}`, 'DELETE'); loadShops(); } catch (e) { alert(e.message); }
         }
 
         async function loadUsers() {
@@ -293,7 +388,7 @@
                             <td data-label="角色" class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
                             <td data-label="所属门店" class="px-6 py-4 text-gray-600">${shopName}</td>
                             <td data-label="操作" class="px-6 py-4 text-right space-x-3">
-                                <button onclick="resetUserPwd(${u.id})" class="text-orange-500 font-medium">重置密码</button>
+                                <button onclick="openEditUser(${u.id}, '${u.name}', '${u.role}', ${u.shop_id})" class="text-blue-500 font-medium">编辑</button>
                                 <button onclick="deleteUser(${u.id})" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
@@ -315,9 +410,37 @@
             } catch (e) { alert(e.message); }
         }
 
-        async function resetUserPwd(userId) {
-            const pwd = prompt("请输入新的密码 (至少6位):"); if(!pwd) return;
-            try { await apiFetch('/admin/reset-password', 'POST', { user_id: userId, new_password: pwd }); alert("密码已重置"); } catch(e) { alert(e.message); }
+        // 🌟 用户编辑逻辑
+        const editUserModal = document.getElementById('editUserModal');
+        function openEditUser(id, name, role, shop_id) {
+            document.getElementById('edit-u-id').value = id;
+            document.getElementById('edit-u-name').value = name;
+            document.getElementById('edit-u-display').value = name;
+            document.getElementById('edit-u-role').value = role;
+            document.getElementById('edit-u-shop').value = shop_id || "";
+            document.getElementById('edit-u-pass').value = "";
+            editUserModal.classList.remove('hidden');
+            editUserModal.classList.add('flex');
+        }
+        function closeEditUser() { editUserModal.classList.add('hidden'); editUserModal.classList.remove('flex'); }
+        async function submitEditUser() {
+            const id = document.getElementById('edit-u-id').value;
+            const name = document.getElementById('edit-u-name').value;
+            const role = document.getElementById('edit-u-role').value;
+            const shop_id = document.getElementById('edit-u-shop').value;
+            const password = document.getElementById('edit-u-pass').value;
+
+            if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
+
+            try {
+                await apiFetch(`/admin/users/${id}`, 'PUT', { 
+                    name, role, 
+                    shop_id: shop_id ? parseInt(shop_id) : null,
+                    password: password ? password : null // 只有填了密码才更新
+                });
+                closeEditUser();
+                loadUsers();
+            } catch (e) { alert(e.message); }
         }
 
         async function deleteUser(userId) {
@@ -354,9 +477,7 @@
                         </td>
                         <td class="px-6 py-4 text-gray-500" data-label="单位">${p.unit}</td>
                         <td class="px-6 py-4" data-label="状态">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
-                                ${p.is_active ? '上架中' : '已下架'}
-                            </span>
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${p.is_active ? '上架中' : '已下架'}</span>
                         </td>
                         <td class="px-6 py-4 text-right space-x-3">
                             <button onclick="openEditProduct(${p.id})" class="text-blue-500 font-medium">编辑</button>
@@ -379,9 +500,7 @@
                 onEnd: async function (evt) {
                     const rows = tbody.querySelectorAll('tr');
                     const productIds = Array.from(rows).map(r => parseInt(r.dataset.id));
-                    try {
-                        await apiFetch('/admin/products/sort', 'POST', { product_ids: productIds });
-                    } catch (e) { alert("排序保存失败: " + e.message); loadProducts(); }
+                    try { await apiFetch('/admin/products/sort', 'POST', { product_ids: productIds }); } catch (e) { alert("排序保存失败: " + e.message); loadProducts(); }
                 }
             });
         }
@@ -393,13 +512,11 @@
             if(!name || !unit) return alert("请填写完整");
             try {
                 await apiFetch('/admin/products', 'POST', { name, unit, category });
-                document.getElementById('p-name').value = '';
-                document.getElementById('p-unit').value = '';
-                loadProducts();
+                document.getElementById('p-name').value = ''; document.getElementById('p-unit').value = ''; loadProducts();
             } catch(e) { alert(e.message); }
         }
 
-        // 商品编辑弹窗逻辑
+        // 商品编辑弹窗
         const editModal = document.getElementById('editProductModal');
         function openEditProduct(id) {
             const p = allProductsData.find(x => x.id === id);
@@ -408,45 +525,28 @@
             document.getElementById('edit-p-name').value = p.name;
             document.getElementById('edit-p-unit').value = p.unit;
             document.getElementById('edit-p-category').value = p.category || '其它包材调料';
-            editModal.classList.remove('hidden');
-            editModal.classList.add('flex');
+            editModal.classList.remove('hidden'); editModal.classList.add('flex');
         }
-
-        function closeEditProduct() {
-            editModal.classList.add('hidden');
-            editModal.classList.remove('flex');
-        }
-
+        function closeEditProduct() { editModal.classList.add('hidden'); editModal.classList.remove('flex'); }
         async function submitEditProduct() {
             const id = document.getElementById('edit-p-id').value;
             const name = document.getElementById('edit-p-name').value.trim();
             const unit = document.getElementById('edit-p-unit').value.trim();
             const category = document.getElementById('edit-p-category').value;
             if (!name || !unit) return alert("名称和单位不能为空");
-
-            try {
-                await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category });
-                closeEditProduct();
-                loadProducts();
-            } catch (e) { alert(e.message); }
+            try { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); closeEditProduct(); loadProducts(); } catch (e) { alert(e.message); }
         }
 
-        async function toggleProduct(id) {
-            try { await apiFetch(`/admin/products/${id}/toggle`, 'PUT'); loadProducts(); } catch(e) { alert(e.message); }
-        }
-
-        async function deleteProduct(id) {
-            if(!confirm("确定要彻底删除该商品吗？")) return;
-            try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); }
-        }
+        async function toggleProduct(id) { try { await apiFetch(`/admin/products/${id}/toggle`, 'PUT'); loadProducts(); } catch(e) { alert(e.message); } }
+        async function deleteProduct(id) { if(!confirm("确定要彻底删除该商品吗？")) return; try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); } }
 
         // ================= 订单管理 =================
         async function loadOrders() {
             try {
-                const orders = await apiFetch('/admin/orders');
+                allOrdersData = await apiFetch('/admin/orders');
                 const tbody = document.getElementById('orderTableBody');
                 tbody.innerHTML = '';
-                orders.forEach(o => {
+                allOrdersData.forEach(o => {
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-50">
                             <td data-label="日期/单号" class="px-6 py-4">
@@ -460,17 +560,35 @@
                                 <span class="text-orange-500 font-bold">退:${o.return_quantity}</span>
                                 <span class="text-green-600 font-bold">存:${o.stock_quantity}</span>
                             </td>
-                            <td class="px-6 py-4 text-right"><button onclick="deleteOrder(${o.id})" class="text-red-500 font-medium">删除</button></td>
+                            <td data-label="操作" class="px-6 py-4 text-right space-x-3">
+                                <button onclick="openEditOrder(${o.id}, ${o.quantity}, ${o.return_quantity}, ${o.stock_quantity})" class="text-blue-500 font-medium">修改</button>
+                                <button onclick="deleteOrder(${o.id})" class="text-red-500 font-medium">删除</button>
+                            </td>
                         </tr>
                     `;
                 });
             } catch (e) { alert(e.message); }
         }
 
-        async function deleteOrder(id) {
-            if(!confirm("确定要删除这条订单记录吗？")) return;
-            try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); }
+        // 🌟 订单修改弹窗
+        const editOrderModal = document.getElementById('editOrderModal');
+        function openEditOrder(id, q, r, s) {
+            document.getElementById('edit-o-id').value = id;
+            document.getElementById('edit-o-q').value = q;
+            document.getElementById('edit-o-r').value = r;
+            document.getElementById('edit-o-s').value = s;
+            editOrderModal.classList.remove('hidden'); editOrderModal.classList.add('flex');
         }
+        function closeEditOrder() { editOrderModal.classList.add('hidden'); editOrderModal.classList.remove('flex'); }
+        async function submitEditOrder() {
+            const id = document.getElementById('edit-o-id').value;
+            const q = parseFloat(document.getElementById('edit-o-q').value) || 0;
+            const r = parseFloat(document.getElementById('edit-o-r').value) || 0;
+            const s = parseFloat(document.getElementById('edit-o-s').value) || 0;
+            try { await apiFetch(`/admin/orders/${id}`, 'PUT', { quantity: q, return_quantity: r, stock_quantity: s }); closeEditOrder(); loadOrders(); } catch (e) { alert(e.message); }
+        }
+
+        async function deleteOrder(id) { if(!confirm("确定要删除这条订单记录吗？")) return; try { await apiFetch(`/admin/orders/${id}`, 'DELETE'); loadOrders(); } catch(e) { alert(e.message); } }
 
         // ================= 修改密码 =================
         const pwdModal = document.getElementById('passwordModal');
@@ -491,7 +609,6 @@
         }
         function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
 
-        // 初始化
         window.onload = async () => { await loadShops(); loadUsers(); loadProducts(); loadOrders(); };
     </script>
 </body>
