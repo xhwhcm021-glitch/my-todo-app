@@ -30,18 +30,18 @@ class Shop(Base):
     __tablename__ = "shops"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False, unique=True)
-    users = relationship("User", back_populates="shop")
 
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), nullable=False, unique=True) # 登录账号
-    real_name = Column(String(50), nullable=True)          # 🌟 真实姓名
+    name = Column(String(50), nullable=False, unique=True)
+    real_name = Column(String(50), nullable=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False)
     shop_id = Column(Integer, ForeignKey("shops.id"), nullable=True)
-    is_active = Column(Boolean, default=True)              # 🌟 状态：True在职，False离职(停用)
-    shop = relationship("Shop", back_populates="users")
+    is_active = Column(Boolean, default=True)
+    
+    shop = relationship("Shop")
     orders = relationship("Order", back_populates="user")
 
 class Category(Base):
@@ -57,27 +57,34 @@ class Product(Base):
     category = Column(String(50), default='其它')
     sort_order = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
-    orders = relationship("Order", back_populates="product")
 
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False) # 允许级联删除
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     order_date = Column(Date, nullable=False, default=date.today)
     quantity = Column(Numeric(12, 2), nullable=False, default=0)
     return_quantity = Column(Numeric(12, 2), nullable=False, default=0)
     stock_quantity = Column(Numeric(12, 2), nullable=False, default=0)
+    
     user = relationship("User", back_populates="orders")
-    product = relationship("Product", back_populates="orders")
+    product = relationship("Product")
 
 class DailyRemark(Base):
     __tablename__ = "daily_remarks"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     remark_date = Column(Date, nullable=False, default=date.today)
     remark = Column(String(500), nullable=True)
     __table_args__ = (UniqueConstraint('user_id', 'remark_date', name='_user_date_remark_uc'),)
+
+# 🌟 新增：节假日表
+class Holiday(Base):
+    __tablename__ = "holidays"
+    id = Column(Integer, primary_key=True, index=True)
+    holiday_date = Column(Date, unique=True, nullable=False)
+    holiday_name = Column(String(50), nullable=False)
 
 Base.metadata.create_all(bind=engine)
 
@@ -155,7 +162,7 @@ class ProductUpdate(BaseModel):
 
 class UserCreate(BaseModel):
     name: str
-    real_name: Optional[str] = None # 🌟 新增真实姓名
+    real_name: Optional[str] = None
     password: Optional[str] = None
     role: str
     shop_id: Optional[int] = None
@@ -188,35 +195,35 @@ class BatchToggleReq(BaseModel):
 class CategoryCreate(BaseModel):
     name: str
 
+class HolidayCreate(BaseModel):
+    holiday_date: str
+    holiday_name: str
+
 # ================= 6. 登录与初始化 =================
 @app.post("/login")
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.name == user_data.name).first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
-    
-    # 🌟 增加停用拦截
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="该账号已被停用（离职），请联系管理员")
-        
+        raise HTTPException(status_code=403, detail="该账号已被停用，请联系管理员")
     access_token = create_access_token(data={"user_id": user.id, "role": user.role, "shop_id": user.shop_id, "name": user.real_name or user.name})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/seed_data")
-def seed_data(db: Session = Depends(get_db)):
-    if not db.query(Shop).first():
-        db.add_all([Shop(name="东城分店"), Shop(name="西城分店")])
-        db.commit()
-    shop_dong = db.query(Shop).filter(Shop.name == "东城分店").first()
-
-    if not db.query(User).filter(User.name == "admin").first():
-        db.add(User(name="admin", real_name="超级管理员", role="admin", hashed_password=get_password_hash("123456")))
-    if not db.query(User).filter(User.name == "boss").first():
-        db.add(User(name="boss", real_name="大老板", role="boss", hashed_password=get_password_hash("123456")))
-    if not db.query(User).filter(User.name == "staff1").first():
-        db.add(User(name="staff1", real_name="张三", role="staff", shop_id=shop_dong.id, hashed_password=get_password_hash("123456")))
-    db.commit()
-    return {"message": "初始化成功！"}
+# 节假日查询公用函数
+def get_holiday_alerts(db: Session):
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    
+    today_holiday = db.query(Holiday).filter(Holiday.holiday_date == today).first()
+    tomorrow_holiday = db.query(Holiday).filter(Holiday.holiday_date == tomorrow).first()
+    
+    msg = ""
+    if tomorrow_holiday:
+        msg = f"⚠️ 紧急提醒：明天是【{tomorrow_holiday.holiday_name}】，请提前备货！"
+    elif today_holiday:
+        msg = f"🎉 今天是【{today_holiday.holiday_name}】，祝您生意兴隆！"
+    return msg
 
 # ================= 7. 密码管理 =================
 @app.post("/auth/change-password")
@@ -265,11 +272,15 @@ def get_staff_daily_history(db: Session = Depends(get_db), current_user: dict = 
 
     remark_record = db.query(DailyRemark).filter(DailyRemark.user_id == user_id, DailyRemark.remark_date == today).first()
 
+    # 🌟 获取节假日提醒
+    holiday_alert = get_holiday_alerts(db)
+
     return {
         "yesterday_shop": get_shop_orders(yesterday),
         "today_my": today_my,
         "my_remark": remark_record.remark if remark_record else "",
-        "shop_name": shop_name
+        "shop_name": shop_name,
+        "holiday_alert": holiday_alert # 返回给前端
     }
 
 @app.post("/orders/batch")
@@ -277,7 +288,6 @@ def create_orders_batch(order_data: BatchOrderSubmit, db: Session = Depends(get_
     today = date.today()
     valid_items = [item for item in order_data.items if item.quantity > 0 or item.return_quantity > 0 or item.stock_quantity > 0]
     user_id = current_user["user_id"]
-
     try:
         for item in valid_items:
             stmt = insert(Order).values(user_id=user_id, product_id=item.product_id, order_date=today, quantity=item.quantity, return_quantity=item.return_quantity, stock_quantity=item.stock_quantity)
@@ -312,16 +322,21 @@ def get_daily_summary(query_date: Optional[str] = None, shop_id: Optional[int] =
 
     if shop_id: query = query.join(User, Order.user_id == User.id).filter(User.shop_id == shop_id)
     results = query.group_by(Product.id, Product.name, Product.unit).all()
-    return {"date": str(target_date), "summary": [{"product_id": r.product_id, "product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]}
+    
+    # 🌟 老板端也加上节假日提醒
+    holiday_alert = get_holiday_alerts(db)
+
+    return {
+        "date": str(target_date), 
+        "holiday_alert": holiday_alert,
+        "summary": [{"product_id": r.product_id, "product_name": r.product_name, "unit": r.unit, "total_quantity": float(r.total_quantity or 0), "total_return": float(r.total_return or 0), "total_stock": float(r.total_stock or 0)} for r in results]
+    }
 
 @app.get("/boss/product_detail")
 def get_product_detail(product_id: int, query_date: str, shop_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["boss"]))):
     try: target_date = datetime.strptime(query_date, "%Y-%m-%d").date()
     except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
-    
-    # 🌟 这里的 User.name 替换成真实姓名（若无则用账号名）
     query = db.query(Order.id, func.coalesce(User.real_name, User.name).label("user_name"), Order.quantity, Order.return_quantity, Order.stock_quantity).join(User, Order.user_id == User.id).filter(Order.product_id == product_id, Order.order_date == target_date)
-    
     if shop_id: query = query.filter(User.shop_id == shop_id)
     results = query.all()
     return [{"id": r.id, "user_name": r.user_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity)} for r in results]
@@ -347,7 +362,7 @@ def get_unsubmitted_staff(query_date: Optional[str] = None, shop_id: Optional[in
         except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
     else: target_date = date.today()
 
-    staff_query = db.query(User).filter(User.role == "staff", User.is_active == True) # 🌟 离职的就不催了
+    staff_query = db.query(User).filter(User.role == "staff", User.is_active == True)
     if shop_id: staff_query = staff_query.filter(User.shop_id == shop_id)
     staffs = staff_query.all()
 
@@ -396,50 +411,57 @@ def admin_update_user(user_id: int, user_data: UserCreate, db: Session = Depends
     user = db.query(User).filter(User.id == user_id).first()
     if not user: raise HTTPException(status_code=404, detail="用户不存在")
     if user.name == "admin" and user_data.role != "admin": raise HTTPException(status_code=400, detail="不能修改超级管理员的角色")
-    
-    user.real_name = user_data.real_name
-    user.role = user_data.role
-    user.shop_id = user_data.shop_id
+    user.real_name = user_data.real_name; user.role = user_data.role; user.shop_id = user_data.shop_id
     if user_data.password: user.hashed_password = get_password_hash(user_data.password)
     db.commit(); return {"message": "用户信息已更新"}
 
-# 🌟 修改：删除改为停用
+# 🌟 彻底删除用户（连带删除其历史订单，因为你的数据库外键设成了 CASCADE，会自动删）
 @app.delete("/admin/users/{user_id}")
-def admin_disable_user(user_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     user = db.query(User).filter(User.id == user_id).first()
     if not user: raise HTTPException(status_code=404, detail="用户不存在")
-    if user.name == "admin": raise HTTPException(status_code=400, detail="不能停用超管")
-    user.is_active = False
-    db.commit(); return {"message": "用户已停用（离职）"}
+    if user.name == "admin": raise HTTPException(status_code=400, detail="不能删除超管")
+    
+    # 先删掉该用户的订单和备注（防止旧数据库没配 CASCADE 报错）
+    db.query(Order).filter(Order.user_id == user_id).delete()
+    db.query(DailyRemark).filter(DailyRemark.user_id == user_id).delete()
+    db.delete(user)
+    db.commit(); return {"message": "员工及历史数据已彻底删除"}
 
-# 🌟 新增：恢复用户
-@app.put("/admin/users/{user_id}/restore")
-def admin_restore_user(user_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user: raise HTTPException(status_code=404, detail="用户不存在")
-    user.is_active = True
-    db.commit(); return {"message": "用户已恢复在职"}
+# 🌟 节假日管理接口
+@app.get("/admin/holidays")
+def admin_get_holidays(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    return db.query(Holiday).order_by(Holiday.holiday_date).all()
 
-# 分类管理接口
+@app.post("/admin/holidays")
+def admin_create_holiday(holiday_data: HolidayCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    try: h_date = datetime.strptime(holiday_data.holiday_date, "%Y-%m-%d").date()
+    except ValueError: raise HTTPException(status_code=400, detail="日期格式错误")
+    if db.query(Holiday).filter(Holiday.holiday_date == h_date).first(): raise HTTPException(status_code=400, detail="该日期已存在节假日")
+    db.add(Holiday(holiday_date=h_date, holiday_name=holiday_data.holiday_name))
+    db.commit(); return {"message": "节假日添加成功"}
+
+@app.delete("/admin/holidays/{holiday_id}")
+def admin_delete_holiday(holiday_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
+    h = db.query(Holiday).filter(Holiday.id == holiday_id).first()
+    if not h: raise HTTPException(status_code=404, detail="节假日不存在")
+    db.delete(h); db.commit(); return {"message": "节假日已删除"}
+
+# 分类 & 商品 & 订单管理 (代码同上，省略重复)
 @app.get("/admin/categories")
-def admin_get_categories(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
-    return db.query(Category).all()
-
+def admin_get_categories(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): return db.query(Category).all()
 @app.post("/admin/categories")
 def admin_create_category(cat_data: CategoryCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     if db.query(Category).filter(Category.name == cat_data.name).first(): raise HTTPException(status_code=400, detail="分类已存在")
     db.add(Category(name=cat_data.name)); db.commit(); return {"message": "分类新增成功"}
-
 @app.put("/admin/categories/{cat_id}")
 def admin_update_category(cat_id: int, cat_data: CategoryCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     cat = db.query(Category).filter(Category.id == cat_id).first()
     if not cat: raise HTTPException(status_code=404, detail="分类不存在")
     if db.query(Category).filter(Category.name == cat_data.name, Category.id != cat_id).first(): raise HTTPException(status_code=400, detail="分类名称已存在")
-    old_name = cat.name
-    cat.name = cat_data.name
+    old_name = cat.name; cat.name = cat_data.name
     db.query(Product).filter(Product.category == old_name).update({"category": cat_data.name})
-    db.commit(); return {"message": "分类修改成功，相关商品已同步更新"}
-
+    db.commit(); return {"message": "分类修改成功"}
 @app.delete("/admin/categories/{cat_id}")
 def admin_delete_category(cat_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     cat = db.query(Category).filter(Category.id == cat_id).first()
@@ -450,37 +472,31 @@ def admin_delete_category(cat_id: int, db: Session = Depends(get_db), current_us
 @app.get("/admin/products")
 def admin_get_products(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))): 
     return db.query(Product).order_by(Product.sort_order.asc(), Product.id.asc()).all()
-
 @app.post("/admin/products")
 def admin_create_product(product_data: ProductCreate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     max_order = db.query(func.max(Product.sort_order)).scalar() or 0
     db.add(Product(name=product_data.name, unit=product_data.unit, category=product_data.category, sort_order=max_order + 1, is_active=True))
     db.commit(); return {"message": "商品新增成功"}
-
 @app.post("/admin/products/sort")
 def admin_sort_products(sort_data: SortRequest, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     for index, product_id in enumerate(sort_data.product_ids):
         db.query(Product).filter(Product.id == product_id).update({"sort_order": index})
     db.commit(); return {"message": "排序已保存"}
-
 @app.post("/admin/products/batch-toggle")
 def admin_batch_toggle_products(req: BatchToggleReq, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     db.query(Product).update({"is_active": req.is_active}); db.commit()
     return {"message": f"所有商品已{'上架' if req.is_active else '下架'}"}
-
 @app.put("/admin/products/{product_id}")
 def admin_update_product(product_id: int, prod_data: ProductUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product: raise HTTPException(status_code=404, detail="商品不存在")
     product.name = prod_data.name; product.unit = prod_data.unit; product.category = prod_data.category
     db.commit(); return {"message": "商品更新成功"}
-
 @app.put("/admin/products/{product_id}/toggle")
 def admin_toggle_product(product_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product: raise HTTPException(status_code=404, detail="商品不存在")
     product.is_active = not product.is_active; db.commit(); return {"message": "状态已切换"}
-
 @app.delete("/admin/products/{product_id}")
 def admin_delete_product(product_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -493,7 +509,6 @@ def admin_delete_product(product_id: int, db: Session = Depends(get_db), current
 def admin_get_orders(db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     results = db.query(Order.id, func.coalesce(User.real_name, User.name).label("user_name"), Product.name.label("product_name"), Order.quantity, Order.return_quantity, Order.stock_quantity, Order.order_date).join(User, Order.user_id == User.id).join(Product, Order.product_id == Product.id).order_by(Order.order_date.desc(), Order.id.desc()).all()
     return [{"id": r.id, "user_name": r.user_name, "product_name": r.product_name, "quantity": float(r.quantity), "return_quantity": float(r.return_quantity), "stock_quantity": float(r.stock_quantity), "date": str(r.order_date)} for r in results]
-
 @app.put("/admin/orders/{order_id}")
 def admin_update_order(order_id: int, order_data: OrderUpdate, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     order = db.query(Order).filter(Order.id == order_id).first()
@@ -501,7 +516,6 @@ def admin_update_order(order_id: int, order_data: OrderUpdate, db: Session = Dep
     if order_data.quantity <= 0 and order_data.return_quantity <= 0 and order_data.stock_quantity <= 0: db.delete(order)
     else: order.quantity = order_data.quantity; order.return_quantity = order_data.return_quantity; order.stock_quantity = order_data.stock_quantity
     db.commit(); return {"message": "订单已修改"}
-
 @app.delete("/admin/orders/{order_id}")
 def admin_delete_order(order_id: int, db: Session = Depends(get_db), current_user: dict = Depends(RoleChecker(["admin"]))):
     order = db.query(Order).filter(Order.id == order_id).first()

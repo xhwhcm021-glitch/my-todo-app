@@ -30,6 +30,7 @@
             <button onclick="switchTab('categories')" id="nav-categories" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">🏷️ 分类管理</button>
             <button onclick="switchTab('products')" id="nav-products" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📦 商品管理</button>
             <button onclick="switchTab('orders')" id="nav-orders" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">📝 订单管理</button>
+            <button onclick="switchTab('holidays')" id="nav-holidays" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 whitespace-nowrap">🎉 节假日管理</button>
         </nav>
     </aside>
 
@@ -43,7 +44,8 @@
 
         <main class="flex-1 overflow-y-auto p-4 md:p-8">
             <div class="max-w-5xl mx-auto">
-                <!-- 模块 1：用户与门店 -->
+                
+                <!-- 用户与门店 -->
                 <div id="content-users" class="space-y-6">
                     <div class="flex flex-col md:flex-row gap-6">
                         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex-1">
@@ -89,7 +91,23 @@
                     </div>
                 </div>
 
-                <!-- 分类 & 商品 & 订单 (代码与上一版相同，不再赘述) -->
+                <!-- 节假日管理 -->
+                <div id="content-holidays" class="space-y-6 hidden">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="font-bold text-gray-700 mb-4">新增节假日提醒</h3>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <input type="date" id="newHolidayDate" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="newHolidayName" placeholder="节日名称(如: 中秋节)" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <button onclick="createHoliday()" class="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 font-medium">添加</button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">设置后，在节日的前一天及当天，店员和老板打开网页顶部会弹出提醒横幅。</p>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <div id="holidayList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    </div>
+                </div>
+
+                <!-- 分类 & 商品 & 订单 (代码同上一版，折叠展示) -->
                 <div id="content-categories" class="space-y-6 hidden">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                         <h3 class="font-bold text-gray-700 mb-4">新增分类</h3>
@@ -138,93 +156,30 @@
         </main>
     </div>
 
-    <!-- 弹窗部分（与上一版相同） -->
-    <!-- 全局自定义危险操作确认弹窗 -->
+    <!-- 确认弹窗 & 编辑弹窗 (与上一版一致，为了篇幅省略，如果你已经保存了就不用改) -->
+    <!-- 但这里为了完整，还是保留“确认操作”的防误触逻辑 -->
     <div id="confirmActionModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden flex items-center justify-center px-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div class="p-6 text-center">
                 <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4"><svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirmTitle">危险操作</h3>
                 <p class="text-sm text-gray-500 mb-4" id="confirmMessage"></p>
-                <p class="text-xs text-red-500 font-bold mb-2">请在下方输入“确认”以继续：</p>
-                <input type="text" id="confirmInput" class="w-full px-4 py-2 border border-red-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none" placeholder="确认">
+                <p class="text-xs text-red-500 font-bold mb-2">请在下方输入“删除”以确认操作：</p>
+                <input type="text" id="confirmInput" class="w-full px-4 py-2 border border-red-300 rounded-lg text-center focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none" placeholder="删除">
             </div>
             <div class="px-6 py-4 bg-gray-50 flex gap-3">
                 <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">取消</button>
-                <button id="confirmBtn" onclick="executeConfirmAction()" class="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>确认</button>
+                <button id="confirmBtn" onclick="executeConfirmAction()" class="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>确认删除</button>
             </div>
         </div>
     </div>
 
-    <!-- 门店编辑 -->
-    <div id="editShopModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改门店名称</h3><button onclick="closeEditShop()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
-            <div class="p-6"><input type="hidden" id="edit-s-id"><label class="block text-sm font-medium text-gray-700 mb-1">新门店名称</label><input type="text" id="edit-s-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditShop()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditShop()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div>
-        </div>
-    </div>
-
-    <!-- 用户编辑 -->
-    <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">编辑用户信息</h3><button onclick="closeEditUser()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="edit-u-id"><input type="hidden" id="edit-u-name">
-                <div><label class="block text-xs text-gray-500 mb-1">登录账号 (不可修改)</label><input type="text" id="edit-u-display" class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" readonly></div>
-                <div><label class="block text-xs text-gray-500 mb-1">真实姓名</label><input type="text" id="edit-u-real-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-                <div><label class="block text-xs text-gray-500 mb-1">角色</label><select id="edit-u-role" class="w-full px-3 py-2 border rounded-lg"><option value="staff">店员 (staff)</option><option value="boss">老板 (boss)</option><option value="admin">管理员 (admin)</option></select></div>
-                <div><label class="block text-xs text-gray-500 mb-1">所属门店</label><select id="edit-u-shop" class="w-full px-3 py-2 border rounded-lg"><option value="">-- 不绑定门店 --</option></select></div>
-                <div><label class="block text-xs text-gray-500 mb-1">重置密码 (留空则不修改)</label><input type="password" id="edit-u-pass" placeholder="输入新密码" class="w-full px-3 py-2 border rounded-lg"></div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditUser()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditUser()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button></div>
-        </div>
-    </div>
-
-    <!-- 商品编辑 (同上) -->
-    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800" id="productModalTitle">新增商品</h3><button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="modal-p-id">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">商品名称</label><input type="text" id="modal-p-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">单位</label><input type="text" id="modal-p-unit" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="如: 斤 / 箱"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">分类</label><select id="modal-p-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></select></div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeProductModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitProductModal()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div>
-        </div>
-    </div>
-
-    <!-- 订单编辑 (同上) -->
-    <div id="editOrderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改订单数据</h3><button onclick="closeEditOrder()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="edit-o-id">
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label class="block text-xs text-center text-gray-500 mb-1">订货量</label><input type="number" id="edit-o-q" class="w-full px-2 py-2 border rounded-lg text-center"></div>
-                    <div><label class="block text-xs text-center text-gray-500 mb-1">退货量</label><input type="number" id="edit-o-r" class="w-full px-2 py-2 border rounded-lg text-center"></div>
-                    <div><label class="block text-xs text-center text-gray-500 mb-1">库存量</label><input type="number" id="edit-o-s" class="w-full px-2 py-2 border rounded-lg text-center"></div>
-                </div>
-                <p class="text-xs text-gray-400 text-center">如果数据全填 0，则该条订单被删除。</p>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditOrder()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditOrder()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div>
-        </div>
-    </div>
-
-    <!-- 密码弹窗 (同上) -->
-    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改密码</h3><button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div>
-            <div class="p-6 space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div>
-                <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button></div>
-        </div>
-    </div>
+    <!-- 各种编辑弹窗（门店、用户、商品、订单、密码）保持上一版代码不变，直接复制进来即可 -->
+    <div id="editShopModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4"><div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"><div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改门店名称</h3><button onclick="closeEditShop()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6"><input type="hidden" id="edit-s-id"><label class="block text-sm font-medium text-gray-700 mb-1">新门店名称</label><input type="text" id="edit-s-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div><div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditShop()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditShop()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div></div></div>
+    <div id="editUserModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4"><div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"><div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">编辑用户信息</h3><button onclick="closeEditUser()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 space-y-4"><input type="hidden" id="edit-u-id"><input type="hidden" id="edit-u-name"><div><label class="block text-xs text-gray-500 mb-1">登录账号 (不可修改)</label><input type="text" id="edit-u-display" class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" readonly></div><div><label class="block text-xs text-gray-500 mb-1">真实姓名</label><input type="text" id="edit-u-real-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div><div><label class="block text-xs text-gray-500 mb-1">角色</label><select id="edit-u-role" class="w-full px-3 py-2 border rounded-lg"><option value="staff">店员 (staff)</option><option value="boss">老板 (boss)</option><option value="admin">管理员 (admin)</option></select></div><div><label class="block text-xs text-gray-500 mb-1">所属门店</label><select id="edit-u-shop" class="w-full px-3 py-2 border rounded-lg"><option value="">-- 不绑定门店 --</option></select></div><div><label class="block text-xs text-gray-500 mb-1">重置密码 (留空则不修改)</label><input type="password" id="edit-u-pass" placeholder="输入新密码" class="w-full px-3 py-2 border rounded-lg"></div></div><div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditUser()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditUser()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存修改</button></div></div></div>
+    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4"><div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"><div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800" id="productModalTitle">新增商品</h3><button onclick="closeProductModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 space-y-4"><input type="hidden" id="modal-p-id"><div><label class="block text-sm font-medium text-gray-700 mb-1">商品名称</label><input type="text" id="modal-p-name" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">单位</label><input type="text" id="modal-p-unit" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="如: 斤 / 箱"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">分类</label><select id="modal-p-category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"></select></div></div><div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeProductModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitProductModal()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div></div></div>
+    <div id="editOrderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4"><div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"><div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改订单数据</h3><button onclick="closeEditOrder()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 space-y-4"><input type="hidden" id="edit-o-id"><div class="grid grid-cols-3 gap-2"><div><label class="block text-xs text-center text-gray-500 mb-1">订货量</label><input type="number" id="edit-o-q" class="w-full px-2 py-2 border rounded-lg text-center"></div><div><label class="block text-xs text-center text-gray-500 mb-1">退货量</label><input type="number" id="edit-o-r" class="w-full px-2 py-2 border rounded-lg text-center"></div><div><label class="block text-xs text-center text-gray-500 mb-1">库存量</label><input type="number" id="edit-o-s" class="w-full px-2 py-2 border rounded-lg text-center"></div></div><p class="text-xs text-gray-400 text-center">如果数据全填 0，则该条订单被删除。</p></div><div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="closeEditOrder()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button onclick="submitEditOrder()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">保存</button></div></div></div>
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4"><div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"><div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50"><h3 class="text-lg font-bold text-gray-800">修改密码</h3><button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button></div><div class="p-6 space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div><div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div><p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p></div><div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3"><button onclick="hidePasswordModal()" class="px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg">取消</button><button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">确认修改</button></div></div></div>
 
     <script>
         const API_BASE_URL = "https://my-todo-app-pvd7.onrender.com";
@@ -259,13 +214,14 @@
                 el.className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap";
             });
             document.getElementById(`nav-${tabName}`).className = "nav-item flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors whitespace-nowrap bg-blue-50 text-blue-600";
+            
+            if (tabName === 'holidays') loadHolidays();
         }
 
-        // 弹窗逻辑
         const confirmActionModal = document.getElementById('confirmActionModal');
         const confirmInput = document.getElementById('confirmInput');
         const confirmBtn = document.getElementById('confirmBtn');
-        confirmInput.addEventListener('input', (e) => { confirmBtn.disabled = e.target.value !== '确认'; }); // 改成“确认”
+        confirmInput.addEventListener('input', (e) => { confirmBtn.disabled = e.target.value !== '删除'; });
         function showCustomConfirm(title, message, callback) {
             document.getElementById('confirmTitle').textContent = title;
             document.getElementById('confirmMessage').textContent = message;
@@ -274,7 +230,7 @@
             setTimeout(() => confirmInput.focus(), 100);
         }
         function closeConfirmModal() { confirmActionModal.classList.add('hidden'); confirmActionModal.classList.remove('flex'); confirmCallback = null; }
-        async function executeConfirmAction() { if (confirmInput.value === '确认' && confirmCallback) { await confirmCallback(); closeConfirmModal(); } }
+        async function executeConfirmAction() { if (confirmInput.value === '删除' && confirmCallback) { await confirmCallback(); closeConfirmModal(); } }
 
         // ================= 门店与用户 =================
         async function loadShops() {
@@ -322,23 +278,17 @@
                 users.forEach(u => {
                     const shopName = globalShops.find(s => s.id === u.shop_id)?.name || '<span class="text-gray-400">无</span>';
                     const roleBadge = u.role === 'admin' ? 'bg-red-100 text-red-700' : u.role === 'boss' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
-                    const statusBadge = u.is_active ? '' : '<span class="ml-2 px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-600">已停用</span>';
-                    const rowClass = u.is_active ? 'hover:bg-gray-50' : 'bg-gray-100 opacity-75';
-
                     tbody.innerHTML += `
-                        <tr class="${rowClass}">
+                        <tr class="hover:bg-gray-50">
                             <td data-label="用户信息" class="px-6 py-4">
-                                <div class="font-bold text-gray-800">${u.real_name || u.name} ${statusBadge}</div>
+                                <div class="font-bold text-gray-800">${u.real_name || u.name}</div>
                                 <div class="text-xs text-gray-400 mt-0.5">账号: ${u.name}</div>
                             </td>
                             <td data-label="角色" class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${roleBadge}">${u.role}</span></td>
                             <td data-label="所属门店" class="px-6 py-4 text-gray-600">${shopName}</td>
                             <td data-label="操作" class="px-6 py-4 text-right space-x-3">
                                 <button onclick="openEditUser(${u.id}, '${u.name}', '${u.real_name || ''}', '${u.role}', ${u.shop_id})" class="text-blue-500 font-medium">编辑</button>
-                                ${u.is_active ? 
-                                    `<button onclick="disableUser(${u.id}, '${u.real_name || u.name}')" class="text-red-500 font-medium">停用</button>` : 
-                                    `<button onclick="restoreUser(${u.id}, '${u.real_name || u.name}')" class="text-green-600 font-medium">恢复在职</button>`
-                                }
+                                <button onclick="deleteUser(${u.id}, '${u.real_name || u.name}')" class="text-red-500 font-medium">删除</button>
                             </td>
                         </tr>
                     `;
@@ -351,39 +301,48 @@
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
             try { await apiFetch('/admin/users', 'POST', { name, real_name, password, role, shop_id: shop_id ? parseInt(shop_id) : null }); alert("创建成功"); document.getElementById('u-name').value = ''; document.getElementById('u-real-name').value = ''; document.getElementById('u-pass').value = ''; loadUsers(); } catch (e) { alert(e.message); }
         }
-        
         const editUserModal = document.getElementById('editUserModal');
         function openEditUser(id, name, real_name, role, shop_id) {
-            document.getElementById('edit-u-id').value = id; 
-            document.getElementById('edit-u-name').value = name; 
-            document.getElementById('edit-u-display').value = name; 
-            document.getElementById('edit-u-real-name').value = real_name; 
-            document.getElementById('edit-u-role').value = role; 
-            document.getElementById('edit-u-shop').value = shop_id || ""; 
-            document.getElementById('edit-u-pass').value = "";
+            document.getElementById('edit-u-id').value = id; document.getElementById('edit-u-name').value = name; document.getElementById('edit-u-display').value = name; document.getElementById('edit-u-real-name').value = real_name; document.getElementById('edit-u-role').value = role; document.getElementById('edit-u-shop').value = shop_id || ""; document.getElementById('edit-u-pass').value = "";
             editUserModal.classList.remove('hidden'); editUserModal.classList.add('flex');
         }
         function closeEditUser() { editUserModal.classList.add('hidden'); editUserModal.classList.remove('flex'); }
         async function submitEditUser() {
-            const id = document.getElementById('edit-u-id').value; 
-            const name = document.getElementById('edit-u-name').value; 
-            const real_name = document.getElementById('edit-u-real-name').value;
-            const role = document.getElementById('edit-u-role').value; 
-            const shop_id = document.getElementById('edit-u-shop').value; 
-            const password = document.getElementById('edit-u-pass').value;
+            const id = document.getElementById('edit-u-id').value; const name = document.getElementById('edit-u-name').value; const real_name = document.getElementById('edit-u-real-name').value; const role = document.getElementById('edit-u-role').value; const shop_id = document.getElementById('edit-u-shop').value; const password = document.getElementById('edit-u-pass').value;
             if (role === 'staff' && !shop_id) return alert("店员必须绑定门店");
             try { await apiFetch(`/admin/users/${id}`, 'PUT', { name, real_name, role, shop_id: shop_id ? parseInt(shop_id) : null, password: password ? password : null }); closeEditUser(); loadUsers(); } catch (e) { alert(e.message); }
         }
-        
-        // 🌟 停用与恢复
-        function disableUser(userId, name) {
-            showCustomConfirm('停用账号', `确定要停用【${name}】的账号吗？\n停用后将无法登录系统。`, async () => {
-                try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch (e) { alert(e.message); }
-            });
+        function deleteUser(userId, name) { showCustomConfirm('彻底删除员工', `确定要【彻底删除】员工【${name}】吗？\n\n警告：该员工名下所有的历史订单也会被一并永久删除！`, async () => { try { await apiFetch(`/admin/users/${userId}`, 'DELETE'); loadUsers(); } catch (e) { alert(e.message); } }); }
+
+        // ================= 节假日管理 =================
+        async function loadHolidays() {
+            try {
+                const holidays = await apiFetch('/admin/holidays');
+                document.getElementById('holidayList').innerHTML = holidays.map(h => `
+                    <div class="flex justify-between items-center bg-orange-50 px-4 py-3 rounded-xl border border-orange-100">
+                        <div>
+                            <span class="font-bold text-orange-700">${h.holiday_name}</span>
+                            <span class="text-sm text-orange-500 ml-3">${h.holiday_date}</span>
+                        </div>
+                        <button onclick="deleteHoliday(${h.id}, '${h.holiday_name}')" class="text-red-500 text-sm font-medium hover:underline">删除</button>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
         }
-        function restoreUser(userId, name) {
-            showCustomConfirm('恢复账号', `确定要恢复【${name}】的账号吗？`, async () => {
-                try { await apiFetch(`/admin/users/${userId}/restore`, 'PUT'); loadUsers(); } catch (e) { alert(e.message); }
+        async function createHoliday() {
+            const holiday_date = document.getElementById('newHolidayDate').value;
+            const holiday_name = document.getElementById('newHolidayName').value.trim();
+            if (!holiday_date || !holiday_name) return alert("请选择日期并填写节日名称");
+            try {
+                await apiFetch('/admin/holidays', 'POST', { holiday_date, holiday_name });
+                document.getElementById('newHolidayDate').value = '';
+                document.getElementById('newHolidayName').value = '';
+                loadHolidays();
+            } catch (e) { alert(e.message); }
+        }
+        function deleteHoliday(id, name) {
+            showCustomConfirm('删除节假日', `确定删除节假日【${name}】吗？`, async () => {
+                try { await apiFetch(`/admin/holidays/${id}`, 'DELETE'); loadHolidays(); } catch (e) { alert(e.message); }
             });
         }
 
@@ -467,31 +426,22 @@
             if (!confirm(`确定要将所有商品${isActive ? '全部上架' : '全部下架'}吗？`)) return;
             try { await apiFetch('/admin/products/batch-toggle', 'POST', { is_active: isActive }); loadProducts(); } catch (e) { alert(e.message); }
         }
-
         const productModal = document.getElementById('productModal');
         function openCreateProduct() {
             document.getElementById('productModalTitle').textContent = "新增商品";
-            document.getElementById('modal-p-id').value = "";
-            document.getElementById('modal-p-name').value = "";
-            document.getElementById('modal-p-unit').value = "";
+            document.getElementById('modal-p-id').value = ""; document.getElementById('modal-p-name').value = ""; document.getElementById('modal-p-unit').value = "";
             productModal.classList.remove('hidden'); productModal.classList.add('flex');
         }
         function openEditProduct(id) {
             const p = allProductsData.find(x => x.id === id);
             if (!p) return;
             document.getElementById('productModalTitle').textContent = "编辑商品";
-            document.getElementById('modal-p-id').value = p.id;
-            document.getElementById('modal-p-name').value = p.name;
-            document.getElementById('modal-p-unit').value = p.unit;
-            document.getElementById('modal-p-category').value = p.category;
+            document.getElementById('modal-p-id').value = p.id; document.getElementById('modal-p-name').value = p.name; document.getElementById('modal-p-unit').value = p.unit; document.getElementById('modal-p-category').value = p.category;
             productModal.classList.remove('hidden'); productModal.classList.add('flex');
         }
         function closeProductModal() { productModal.classList.add('hidden'); productModal.classList.remove('flex'); }
         async function submitProductModal() {
-            const id = document.getElementById('modal-p-id').value;
-            const name = document.getElementById('modal-p-name').value.trim();
-            const unit = document.getElementById('modal-p-unit').value.trim();
-            const category = document.getElementById('modal-p-category').value;
+            const id = document.getElementById('modal-p-id').value; const name = document.getElementById('modal-p-name').value.trim(); const unit = document.getElementById('modal-p-unit').value.trim(); const category = document.getElementById('modal-p-category').value;
             if (!name || !unit) return alert("名称和单位不能为空");
             try {
                 if (id) { await apiFetch(`/admin/products/${id}`, 'PUT', { name, unit, category }); } 
@@ -499,7 +449,6 @@
                 closeProductModal(); loadProducts();
             } catch (e) { alert(e.message); }
         }
-
         async function toggleProduct(id) { try { await apiFetch(`/admin/products/${id}/toggle`, 'PUT'); loadProducts(); } catch(e) { alert(e.message); } }
         function deleteProduct(id, name) { showCustomConfirm('删除商品', `确定要彻底删除【${name}】吗？`, async () => { try { await apiFetch(`/admin/products/${id}`, 'DELETE'); loadProducts(); } catch(e) { alert(e.message); } }); }
 

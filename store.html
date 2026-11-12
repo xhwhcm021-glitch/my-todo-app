@@ -10,12 +10,10 @@
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
         .category-tab.active { background-color: #2563eb; color: white; }
-        
         #printContainer { position: absolute; top: -9999px; left: 0; width: 1200px; background: #fff; padding: 40px; font-family: "SimSun", "宋体", serif; color: #000; }
         .print-table { width: 100%; border-collapse: collapse; font-size: 16px; }
         .print-table th, .print-table td { border: 1px solid #000; padding: 6px 4px; text-align: center; height: 32px; }
         .print-table th { font-weight: bold; }
-        
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -23,8 +21,10 @@
 <body class="bg-gray-50 h-screen flex flex-col font-sans antialiased text-gray-800">
 
     <header class="bg-white shadow-sm sticky top-0 z-30">
+        <!-- 🌟 节假日横幅 -->
+        <div id="holidayAlertBox" class="hidden bg-orange-500 text-white text-center py-2 text-sm font-bold animate-pulse"></div>
+
         <div class="px-4 h-14 flex justify-between items-center">
-            <!-- 🌟 这里的文字会被 JS 动态替换为 'xxx店订货单' -->
             <h1 class="text-lg font-bold text-gray-800 tracking-wide" id="topHeaderTitle">订货单</h1>
             <div class="flex items-center space-x-3">
                 <button onclick="showPasswordModal()" class="text-sm text-blue-600 font-medium px-3 py-1.5 rounded-md active:bg-blue-50">改密</button>
@@ -55,12 +55,8 @@
             <input type="text" id="remarkInput" placeholder="📝 缺货/临时补录留言（如：洗洁精2瓶）" class="w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-gray-700 placeholder-yellow-600/50 focus:outline-none focus:ring-2 focus:ring-yellow-400">
         </div>
         <div class="flex space-x-3 w-full">
-            <button onclick="openPreview()" class="w-1/3 bg-white border border-blue-600 text-blue-600 font-bold text-lg py-3 rounded-xl active:bg-blue-50 transition-colors">
-                预览
-            </button>
-            <button id="submitBtn" onclick="submitOrders()" class="w-2/3 bg-blue-600 text-white font-bold text-lg py-3 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400">
-                提交订单
-            </button>
+            <button onclick="openPreview()" class="w-1/3 bg-white border border-blue-600 text-blue-600 font-bold text-lg py-3 rounded-xl active:bg-blue-50 transition-colors">预览</button>
+            <button id="submitBtn" onclick="submitOrders()" class="w-2/3 bg-blue-600 text-white font-bold text-lg py-3 rounded-xl active:bg-blue-700 transition-colors disabled:bg-gray-400">提交订单</button>
         </div>
     </footer>
 
@@ -77,21 +73,14 @@
     </div>
 
     <div id="printContainer">
-        <!-- 🌟 表头也会通过 JS 动态替换为带店名的 -->
         <h2 style="text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 30px;" id="printHeader"></h2>
         <div style="display: flex; justify-content: space-between; font-size: 18px; margin-bottom: 10px;">
             <div>日期：<span id="printDate"></span></div>
             <div>订货人：<span id="printStaff"></span></div>
         </div>
         <div style="display: flex; gap: 10px;">
-            <div style="flex: 1; display: flex; gap: 10px;">
-                <div style="flex: 1;" id="printCol1"></div>
-                <div style="flex: 1;" id="printCol2"></div>
-            </div>
-            <div style="flex: 1; display: flex; gap: 10px;">
-                <div style="flex: 1;" id="printCol3"></div>
-                <div style="flex: 1;" id="printCol4"></div>
-            </div>
+            <div style="flex: 1; display: flex; gap: 10px;"><div style="flex: 1;" id="printCol1"></div><div style="flex: 1;" id="printCol2"></div></div>
+            <div style="flex: 1; display: flex; gap: 10px;"><div style="flex: 1;" id="printCol3"></div><div style="flex: 1;" id="printCol4"></div></div>
         </div>
         <div id="printRemarkArea" style="margin-top: 20px; font-size: 18px; border: 1px solid #000; padding: 10px; min-height: 50px; display: none;">
             <strong>备注：</strong><span id="printRemark"></span>
@@ -105,13 +94,13 @@
                 <button onclick="hidePasswordModal()" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="p-6 space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">旧密码</label><input type="password" id="oldPassword" class="w-full px-3 py-2 border rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">新密码</label><input type="password" id="newPassword" class="w-full px-3 py-2 border rounded-lg"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label><input type="password" id="confirmPassword" class="w-full px-3 py-2 border rounded-lg"></div>
                 <p id="pwdErrorMsg" class="text-sm text-red-500 hidden"></p>
             </div>
             <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg">取消</button>
+                <button onclick="hidePasswordModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-lg">取消</button>
                 <button id="submitPwdBtn" onclick="submitChangePassword()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg">确认修改</button>
             </div>
         </div>
@@ -133,61 +122,48 @@
             options.headers = options.headers || {};
             options.headers['Authorization'] = `Bearer ${token}`;
             const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-            if (response.status === 401) {
-                localStorage.removeItem('jwt_token'); 
-                window.location.href = 'login.html'; 
-                return;
-            }
+            if (response.status === 401) { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; return; }
             return response;
         }
 
         let allProducts = [];
         let currentCategory = '全部';
-        // 新增了 shop_name
-        let historyData = { yesterday_shop: {}, today_my: {}, my_remark: "", shop_name: "" }; 
+        let historyData = { yesterday_shop: {}, today_my: {}, my_remark: "", shop_name: "", holiday_alert: "" }; 
 
         async function loadData() {
             try {
-                const [resProducts, resHistory] = await Promise.all([
-                    authFetch('/products/active'),
-                    authFetch('/staff/daily_history')
-                ]);
-                
+                const [resProducts, resHistory] = await Promise.all([authFetch('/products/active'), authFetch('/staff/daily_history')]);
                 if (!resProducts.ok || !resHistory.ok) throw new Error("数据加载失败");
                 
                 allProducts = await resProducts.json();
                 historyData = await resHistory.json();
 
-                // 🌟 动态设置顶部的标题为店名
-                document.getElementById('topHeaderTitle').innerText = `${historyData.shop_name || '本'}店订货单`;
-
-                if (historyData.my_remark) {
-                    document.getElementById('remarkInput').value = historyData.my_remark;
+                // 🌟 渲染节假日提醒
+                if (historyData.holiday_alert) {
+                    const alertBox = document.getElementById('holidayAlertBox');
+                    alertBox.textContent = historyData.holiday_alert;
+                    alertBox.classList.remove('hidden');
                 }
 
+                document.getElementById('topHeaderTitle').innerText = `${historyData.shop_name || '本'}店订货单`;
+                if (historyData.my_remark) document.getElementById('remarkInput').value = historyData.my_remark;
+
                 const categories = ['全部', ...new Set(allProducts.map(p => p.category || '其它'))];
-                const tabsContainer = document.getElementById('categoryTabs');
-                tabsContainer.innerHTML = categories.map(cat => `
-                    <button onclick="switchCategory('${cat}')" class="category-tab ${cat === '全部' ? 'active' : 'bg-gray-100 text-gray-600'} px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors">
-                        ${cat}
-                    </button>
+                document.getElementById('categoryTabs').innerHTML = categories.map(cat => `
+                    <button onclick="switchCategory('${cat}')" class="category-tab ${cat === '全部' ? 'active' : 'bg-gray-100 text-gray-600'} px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors">${cat}</button>
                 `).join('');
 
                 renderList();
             } catch (error) {
-                document.getElementById('productList').innerHTML = `<div class="text-center text-red-500 py-10">加载失败，请刷新重试</div>`;
+                document.getElementById('productList').innerHTML = `<div class="text-center text-red-500 py-10">加载失败</div>`;
             }
         }
 
         function switchCategory(cat) {
             currentCategory = cat;
             document.querySelectorAll('.category-tab').forEach(btn => {
-                btn.classList.remove('active', 'bg-blue-600', 'text-white');
-                btn.classList.add('bg-gray-100', 'text-gray-600');
-                if (btn.textContent.trim() === cat) {
-                    btn.classList.add('active', 'bg-blue-600', 'text-white');
-                    btn.classList.remove('bg-gray-100', 'text-gray-600');
-                }
+                btn.classList.remove('active', 'bg-blue-600', 'text-white'); btn.classList.add('bg-gray-100', 'text-gray-600');
+                if (btn.textContent.trim() === cat) { btn.classList.add('active', 'bg-blue-600', 'text-white'); btn.classList.remove('bg-gray-100', 'text-gray-600'); }
             });
             renderList();
         }
@@ -195,29 +171,16 @@
         function renderList() {
             const keyword = document.getElementById('searchInput').value.trim();
             const mainContainer = document.getElementById('productList');
-            
-            const filtered = allProducts.filter(p => {
-                const matchCategory = currentCategory === '全部' || (p.category || '其它') === currentCategory;
-                const matchKeyword = p.name.includes(keyword);
-                return matchCategory && matchKeyword;
-            });
+            const filtered = allProducts.filter(p => (currentCategory === '全部' || (p.category || '其它') === currentCategory) && p.name.includes(keyword));
 
-            if (filtered.length === 0) {
-                mainContainer.innerHTML = `<div class="text-center text-gray-400 py-10">没有找到相关商品</div>`;
-                return;
-            }
+            if (filtered.length === 0) { mainContainer.innerHTML = `<div class="text-center text-gray-400 py-10">没有找到相关商品</div>`; return; }
 
             mainContainer.innerHTML = filtered.map(p => {
                 const yShop = historyData.yesterday_shop[p.id];
                 const myData = historyData.today_my[p.id];
                 
-                const yQ = yShop ? yShop.quantity : '-';
-                const yR = yShop ? yShop.return_quantity : '-';
-                const yS = yShop ? yShop.stock_quantity : '-';
-
-                const valQ = myData && myData.quantity !== 0 ? myData.quantity : '';
-                const valR = myData && myData.return_quantity !== 0 ? myData.return_quantity : '';
-                const valS = myData && myData.stock_quantity !== 0 ? myData.stock_quantity : '';
+                const yQ = yShop ? yShop.quantity : '-'; const yR = yShop ? yShop.return_quantity : '-'; const yS = yShop ? yShop.stock_quantity : '-';
+                const valQ = myData && myData.quantity !== 0 ? myData.quantity : ''; const valR = myData && myData.return_quantity !== 0 ? myData.return_quantity : ''; const valS = myData && myData.stock_quantity !== 0 ? myData.stock_quantity : '';
 
                 return `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col space-y-1">
@@ -225,7 +188,6 @@
                         <span class="text-base font-bold text-gray-800">${p.name}</span>
                         <span class="text-xs text-gray-400">单位: ${p.unit}</span>
                     </div>
-                    
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[10px] text-center text-gray-500 mb-0.5">订货量</label>
@@ -243,8 +205,7 @@
                             <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yS}</div>
                         </div>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
 
@@ -254,8 +215,7 @@
             inputs.forEach(input => {
                 const val = input.value.trim();
                 if (val !== '') {
-                    const id = input.dataset.id;
-                    const field = input.dataset.field;
+                    const id = input.dataset.id; const field = input.dataset.field;
                     if (!inputData[id]) inputData[id] = {};
                     inputData[id][field] = val;
                 }
@@ -264,63 +224,38 @@
             const today = new Date();
             const dateStr = `${today.getFullYear()} 年 ${today.getMonth() + 1} 月 ${today.getDate()} 日`;
             let staffName = "店员";
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-                staffName = payload.name || "店员";
-            } catch (e) {}
+            try { staffName = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).name || "店员"; } catch (e) {}
 
             document.getElementById('printDate').innerText = dateStr;
             document.getElementById('printStaff').innerText = staffName;
-            // 🌟 动态把店名写到图片表头中
             document.getElementById('printHeader').innerText = `${historyData.shop_name || '本'}店订货单`;
 
             const remarkVal = document.getElementById('remarkInput').value.trim();
             const remarkArea = document.getElementById('printRemarkArea');
-            if (remarkVal) {
-                document.getElementById('printRemark').innerText = remarkVal;
-                remarkArea.style.display = 'block';
-            } else {
-                remarkArea.style.display = 'none';
-            }
+            if (remarkVal) { document.getElementById('printRemark').innerText = remarkVal; remarkArea.style.display = 'block'; } else { remarkArea.style.display = 'none'; }
 
             const total = allProducts.length;
-            const split1 = Math.ceil(total / 4);
-            const split2 = Math.ceil(total / 2);
-            const split3 = Math.ceil((total * 3) / 4);
-            const cols = [
-                allProducts.slice(0, split1), 
-                allProducts.slice(split1, split2), 
-                allProducts.slice(split2, split3), 
-                allProducts.slice(split3, total)
-            ];
+            const split1 = Math.ceil(total / 4); const split2 = Math.ceil(total / 2); const split3 = Math.ceil((total * 3) / 4);
+            const cols = [allProducts.slice(0, split1), allProducts.slice(split1, split2), allProducts.slice(split2, split3), allProducts.slice(split3, total)];
 
             const buildTable = (products, isFirstTwoCols) => {
                 let html = `<table class="print-table"><thead><tr><th>品名</th>`;
-                if (isFirstTwoCols) html += `<th>订货量</th><th>退货</th><th>库存</th>`;
-                else html += `<th>数量</th>`;
+                if (isFirstTwoCols) html += `<th>订货量</th><th>退货</th><th>库存</th>`; else html += `<th>数量</th>`;
                 html += `</tr></thead><tbody>`;
-
                 products.forEach(p => {
                     const data = inputData[p.id] || {};
-                    const q = data.quantity || '';
-                    const r = data.return_quantity || '';
-                    const s = data.stock_quantity || '';
-                    
+                    const q = data.quantity || ''; const r = data.return_quantity || ''; const s = data.stock_quantity || '';
                     html += `<tr><td>${p.name}</td>`;
-                    if (isFirstTwoCols) html += `<td>${q}</td><td>${r}</td><td>${s}</td>`;
-                    else html += `<td>${q}</td>`;
+                    if (isFirstTwoCols) html += `<td>${q}</td><td>${r}</td><td>${s}</td>`; else html += `<td>${q}</td>`;
                     html += `</tr>`;
                 });
-
                 const maxRows = Math.ceil(total / 4);
                 for (let i = products.length; i < maxRows; i++) {
                     html += `<tr><td>&nbsp;</td>`;
-                    if (isFirstTwoCols) html += `<td></td><td></td><td></td>`;
-                    else html += `<td></td>`;
+                    if (isFirstTwoCols) html += `<td></td><td></td><td></td>`; else html += `<td></td>`;
                     html += `</tr>`;
                 }
-                html += `</tbody></table>`;
-                return html;
+                html += `</tbody></table>`; return html;
             };
 
             document.getElementById('printCol1').innerHTML = buildTable(cols[0], true);
@@ -328,127 +263,55 @@
             document.getElementById('printCol3').innerHTML = buildTable(cols[2], false);
             document.getElementById('printCol4').innerHTML = buildTable(cols[3], false);
 
-            const previewModal = document.getElementById('previewModal');
-            const img = document.getElementById('previewImage');
-            img.src = ''; 
-            previewModal.classList.remove('hidden');
-            previewModal.classList.add('flex');
-            
-            const printContainer = document.getElementById('printContainer');
+            const previewModal = document.getElementById('previewModal'); const img = document.getElementById('previewImage');
+            img.src = ''; previewModal.classList.remove('hidden'); previewModal.classList.add('flex');
             setTimeout(async () => {
-                try {
-                    const canvas = await html2canvas(printContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-                    img.src = canvas.toDataURL('image/jpeg', 0.9);
-                } catch (err) {
-                    alert("图片生成失败，请重试");
-                    closePreview();
-                }
+                try { const canvas = await html2canvas(document.getElementById('printContainer'), { scale: 2, useCORS: true, backgroundColor: '#ffffff' }); img.src = canvas.toDataURL('image/jpeg', 0.9); }
+                catch (err) { alert("图片生成失败"); closePreview(); }
             }, 300);
         }
-
-        function closePreview() {
-            const previewModal = document.getElementById('previewModal');
-            previewModal.classList.add('hidden');
-            previewModal.classList.remove('flex');
-        }
+        function closePreview() { const p = document.getElementById('previewModal'); p.classList.add('hidden'); p.classList.remove('flex'); }
 
         async function submitOrders() {
-            const inputs = document.querySelectorAll('input[type="number"]');
-            const orderMap = {}; 
-
+            const inputs = document.querySelectorAll('input[type="number"]'); const orderMap = {}; 
             inputs.forEach(input => {
                 const val = parseFloat(input.value);
                 if (val > 0) {
-                    const id = input.dataset.id;
-                    const field = input.dataset.field;
+                    const id = input.dataset.id; const field = input.dataset.field;
                     if (!orderMap[id]) orderMap[id] = { product_id: parseInt(id), quantity: 0, return_quantity: 0, stock_quantity: 0 };
                     orderMap[id][field] = val;
                 }
             });
-
             const orderItems = Object.values(orderMap);
             const remark = document.getElementById('remarkInput').value.trim();
-
             if (orderItems.length === 0 && !remark) return alert("请填写数量或备注");
 
-            const submitBtn = document.getElementById('submitBtn');
-            const originalText = submitBtn.textContent;
-            submitBtn.disabled = true; 
-            submitBtn.textContent = "提交中...";
-
+            const submitBtn = document.getElementById('submitBtn'); const originalText = submitBtn.textContent;
+            submitBtn.disabled = true; submitBtn.textContent = "提交中...";
             try {
-                const response = await authFetch('/orders/batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ items: orderItems, remark: remark })
-                });
+                const response = await authFetch('/orders/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: orderItems, remark: remark }) });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.detail || "提交失败");
-                
-                alert(data.message || "提交成功！");
-                loadData(); 
-
-            } catch (error) {
-                alert(error.message);
-            } finally {
-                submitBtn.disabled = false; 
-                submitBtn.textContent = originalText;
-            }
+                alert(data.message || "提交成功！"); loadData(); 
+            } catch (error) { alert(error.message); } finally { submitBtn.disabled = false; submitBtn.textContent = originalText; }
         }
 
-        const pwdModal = document.getElementById('passwordModal');
-        const pwdErrorMsg = document.getElementById('pwdErrorMsg');
-        
-        function showPasswordModal() { 
-            document.getElementById('oldPassword').value = ''; 
-            document.getElementById('newPassword').value = ''; 
-            document.getElementById('confirmPassword').value = ''; 
-            pwdErrorMsg.classList.add('hidden'); 
-            pwdModal.classList.remove('hidden'); 
-        }
-        
+        const pwdModal = document.getElementById('passwordModal'); const pwdErrorMsg = document.getElementById('pwdErrorMsg');
+        function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
         function hidePasswordModal() { pwdModal.classList.add('hidden'); }
-        
         async function submitChangePassword() {
-            const oldPwd = document.getElementById('oldPassword').value; 
-            const newPwd = document.getElementById('newPassword').value; 
-            const confirmPwd = document.getElementById('confirmPassword').value; 
-            const btn = document.getElementById('submitPwdBtn');
-            
+            const oldPwd = document.getElementById('oldPassword').value; const newPwd = document.getElementById('newPassword').value; const confirmPwd = document.getElementById('confirmPassword').value; const btn = document.getElementById('submitPwdBtn');
             if (!oldPwd || !newPwd || !confirmPwd) return showPwdError("请填写完整");
             if (newPwd.length < 6) return showPwdError("新密码至少6位");
             if (newPwd !== confirmPwd) return showPwdError("两次密码不一致");
-            
-            btn.disabled = true; 
-            btn.textContent = "提交中..."; 
-            pwdErrorMsg.classList.add('hidden');
-            
+            btn.disabled = true; btn.textContent = "提交中..."; pwdErrorMsg.classList.add('hidden');
             try {
-                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) 
-                });
+                const res = await fetch(`${API_BASE_URL}/auth/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }) });
                 const data = await res.json();
-                if (res.ok) { 
-                    alert("修改成功，请重新登录"); 
-                    localStorage.removeItem('jwt_token'); 
-                    window.location.href = 'login.html'; 
-                } else { 
-                    showPwdError(data.detail || "修改失败"); 
-                }
-            } catch (error) { 
-                showPwdError("网络错误"); 
-            } finally { 
-                btn.disabled = false; 
-                btn.textContent = "确认修改"; 
-            }
+                if (res.ok) { alert("修改成功，请重新登录"); localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; } else { showPwdError(data.detail || "修改失败"); }
+            } catch (error) { showPwdError("网络错误"); } finally { btn.disabled = false; btn.textContent = "确认修改"; }
         }
-        
-        function showPwdError(msg) { 
-            pwdErrorMsg.textContent = msg; 
-            pwdErrorMsg.classList.remove('hidden'); 
-        }
+        function showPwdError(msg) { pwdErrorMsg.textContent = msg; pwdErrorMsg.classList.remove('hidden'); }
 
         window.onload = loadData;
     </script>
