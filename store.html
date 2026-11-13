@@ -21,7 +21,7 @@
 <body class="bg-gray-50 h-screen flex flex-col font-sans antialiased text-gray-800">
 
     <header class="bg-white shadow-sm sticky top-0 z-30">
-        <!-- 🌟 节假日横幅 -->
+        <!-- 节假日横幅 -->
         <div id="holidayAlertBox" class="hidden bg-orange-500 text-white text-center py-2 text-sm font-bold animate-pulse"></div>
 
         <div class="px-4 h-14 flex justify-between items-center">
@@ -52,7 +52,7 @@
 
     <footer class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 pt-3 pb-4 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
         <div class="mb-3">
-            <input type="text" id="remarkInput" placeholder="📝 缺货/临时补录留言（如：洗洁精2瓶）" class="w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-gray-700 placeholder-yellow-600/50 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+            <input type="text" id="remarkInput" oninput="saveDraft()" placeholder="📝 缺货/临时补录留言（如：洗洁精2瓶）" class="w-full px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-gray-700 placeholder-yellow-600/50 focus:outline-none focus:ring-2 focus:ring-yellow-400">
         </div>
         <div class="flex space-x-3 w-full">
             <button onclick="openPreview()" class="w-1/3 bg-white border border-blue-600 text-blue-600 font-bold text-lg py-3 rounded-xl active:bg-blue-50 transition-colors">预览</button>
@@ -116,21 +116,72 @@
             if (payload.role !== 'staff') { alert("无权访问"); window.location.href = 'login.html'; }
         } catch (e) { window.location.href = 'login.html'; }
 
-        function logout() { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; }
+        // 🌟 修改：退出不再清理草稿
+        function logout() { 
+            localStorage.removeItem('jwt_token'); 
+            window.location.href = 'login.html'; 
+        }
 
         async function authFetch(endpoint, options = {}) {
             options.headers = options.headers || {};
             options.headers['Authorization'] = `Bearer ${token}`;
             const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-            if (response.status === 401) { localStorage.removeItem('jwt_token'); window.location.href = 'login.html'; return; }
+            if (response.status === 401) { 
+                localStorage.removeItem('jwt_token'); 
+                window.location.href = 'login.html'; 
+                return; 
+            }
             return response;
         }
 
         let allProducts = [];
         let currentCategory = '全部';
         let historyData = { yesterday_shop: {}, today_my: {}, my_remark: "", shop_name: "", holiday_alert: "" }; 
+        let draftData = {}; 
 
+        function getTodayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // ================= 本地草稿功能 =================
+        function saveDraft() {
+            const today = getTodayStr();
+            const draft = { date: today, data: {}, remark: document.getElementById('remarkInput').value };
+            
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                if (input.value.trim() !== '') {
+                    const id = input.dataset.id;
+                    const field = input.dataset.field;
+                    if (!draft.data[id]) draft.data[id] = {};
+                    draft.data[id][field] = input.value;
+                }
+            });
+            localStorage.setItem('order_draft', JSON.stringify(draft));
+        }
+
+        function loadDraft() {
+            const saved = localStorage.getItem('order_draft');
+            if (!saved) return;
+            
+            try {
+                const draft = JSON.parse(saved);
+                // 检查草稿是否是今天的，不是的话直接丢弃（实现到了0点自动失效）
+                if (draft.date === getTodayStr()) {
+                    draftData = draft.data || {};
+                    if (draft.remark) {
+                        document.getElementById('remarkInput').value = draft.remark;
+                    }
+                } else {
+                    localStorage.removeItem('order_draft');
+                }
+            } catch (e) { console.error("草稿读取失败", e); }
+        }
+
+        // ================= 数据加载 =================
         async function loadData() {
+            loadDraft(); // 先加载本地草稿
+
             try {
                 const [resProducts, resHistory] = await Promise.all([authFetch('/products/active'), authFetch('/staff/daily_history')]);
                 if (!resProducts.ok || !resHistory.ok) throw new Error("数据加载失败");
@@ -138,7 +189,6 @@
                 allProducts = await resProducts.json();
                 historyData = await resHistory.json();
 
-                // 🌟 渲染节假日提醒
                 if (historyData.holiday_alert) {
                     const alertBox = document.getElementById('holidayAlertBox');
                     alertBox.textContent = historyData.holiday_alert;
@@ -146,7 +196,11 @@
                 }
 
                 document.getElementById('topHeaderTitle').innerText = `${historyData.shop_name || '本'}店订货单`;
-                if (historyData.my_remark) document.getElementById('remarkInput').value = historyData.my_remark;
+                
+                // 只有当草稿里没有备注时，才使用数据库里的备注
+                if (!document.getElementById('remarkInput').value && historyData.my_remark) {
+                    document.getElementById('remarkInput').value = historyData.my_remark;
+                }
 
                 const categories = ['全部', ...new Set(allProducts.map(p => p.category || '其它'))];
                 document.getElementById('categoryTabs').innerHTML = categories.map(cat => `
@@ -180,7 +234,12 @@
                 const myData = historyData.today_my[p.id];
                 
                 const yQ = yShop ? yShop.quantity : '-'; const yR = yShop ? yShop.return_quantity : '-'; const yS = yShop ? yShop.stock_quantity : '-';
-                const valQ = myData && myData.quantity !== 0 ? myData.quantity : ''; const valR = myData && myData.return_quantity !== 0 ? myData.return_quantity : ''; const valS = myData && myData.stock_quantity !== 0 ? myData.stock_quantity : '';
+                
+                // 优先使用本地草稿的数据，如果没有，再用数据库里的数据
+                const draftItem = draftData[p.id] || {};
+                const valQ = draftItem.quantity !== undefined ? draftItem.quantity : (myData && myData.quantity !== 0 ? myData.quantity : '');
+                const valR = draftItem.return_quantity !== undefined ? draftItem.return_quantity : (myData && myData.return_quantity !== 0 ? myData.return_quantity : '');
+                const valS = draftItem.stock_quantity !== undefined ? draftItem.stock_quantity : (myData && myData.stock_quantity !== 0 ? myData.stock_quantity : '');
 
                 return `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 flex flex-col space-y-1">
@@ -191,17 +250,17 @@
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[10px] text-center text-gray-500 mb-0.5">订货量</label>
-                            <input type="number" inputmode="decimal" min="0" step="any" value="${valQ}" data-id="${p.id}" data-field="quantity" placeholder="-" class="input-qty w-full h-10 text-center font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valQ}" data-id="${p.id}" data-field="quantity" oninput="saveDraft()" placeholder="-" class="input-qty w-full h-10 text-center font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yQ}</div>
                         </div>
                         <div>
                             <label class="block text-[10px] text-center text-gray-500 mb-0.5">退货量</label>
-                            <input type="number" inputmode="decimal" min="0" step="any" value="${valR}" data-id="${p.id}" data-field="return_quantity" placeholder="-" class="input-return w-full h-10 text-center font-bold text-orange-500 bg-orange-50 border border-orange-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valR}" data-id="${p.id}" data-field="return_quantity" oninput="saveDraft()" placeholder="-" class="input-return w-full h-10 text-center font-bold text-orange-500 bg-orange-50 border border-orange-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                             <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yR}</div>
                         </div>
                         <div>
                             <label class="block text-[10px] text-center text-gray-500 mb-0.5">库存量</label>
-                            <input type="number" inputmode="decimal" min="0" step="any" value="${valS}" data-id="${p.id}" data-field="stock_quantity" placeholder="-" class="input-stock w-full h-10 text-center font-bold text-green-600 bg-green-50 border border-green-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <input type="number" inputmode="decimal" min="0" step="any" value="${valS}" data-id="${p.id}" data-field="stock_quantity" oninput="saveDraft()" placeholder="-" class="input-stock w-full h-10 text-center font-bold text-green-600 bg-green-50 border border-green-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                             <div class="text-[10px] text-center text-gray-400 mt-1">昨: ${yS}</div>
                         </div>
                     </div>
@@ -209,9 +268,40 @@
             }).join('');
         }
 
+        // ================= 提交与预览 =================
+        async function submitOrders() {
+            const inputs = document.querySelectorAll('input[type="number"]'); const orderMap = {}; 
+            inputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (val > 0) {
+                    const id = input.dataset.id; const field = input.dataset.field;
+                    if (!orderMap[id]) orderMap[id] = { product_id: parseInt(id), quantity: 0, return_quantity: 0, stock_quantity: 0 };
+                    orderMap[id][field] = val;
+                }
+            });
+            const orderItems = Object.values(orderMap);
+            const remark = document.getElementById('remarkInput').value.trim();
+            if (orderItems.length === 0 && !remark) return alert("请填写数量或备注");
+
+            const submitBtn = document.getElementById('submitBtn'); const originalText = submitBtn.textContent;
+            submitBtn.disabled = true; submitBtn.textContent = "提交中...";
+            try {
+                const response = await authFetch('/orders/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: orderItems, remark: remark }) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || "提交失败");
+                
+                alert(data.message || "提交成功！"); 
+                
+                // 提交成功后，依然清理本地草稿，让页面加载数据库里的最新数据
+                localStorage.removeItem('order_draft');
+                draftData = {};
+                
+                loadData(); 
+            } catch (error) { alert(error.message); } finally { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+        }
+
         async function openPreview() {
-            const inputs = document.querySelectorAll('input[type="number"]');
-            const inputData = {};
+            const inputs = document.querySelectorAll('input[type="number"]'); const inputData = {};
             inputs.forEach(input => {
                 const val = input.value.trim();
                 if (val !== '') {
@@ -272,30 +362,7 @@
         }
         function closePreview() { const p = document.getElementById('previewModal'); p.classList.add('hidden'); p.classList.remove('flex'); }
 
-        async function submitOrders() {
-            const inputs = document.querySelectorAll('input[type="number"]'); const orderMap = {}; 
-            inputs.forEach(input => {
-                const val = parseFloat(input.value);
-                if (val > 0) {
-                    const id = input.dataset.id; const field = input.dataset.field;
-                    if (!orderMap[id]) orderMap[id] = { product_id: parseInt(id), quantity: 0, return_quantity: 0, stock_quantity: 0 };
-                    orderMap[id][field] = val;
-                }
-            });
-            const orderItems = Object.values(orderMap);
-            const remark = document.getElementById('remarkInput').value.trim();
-            if (orderItems.length === 0 && !remark) return alert("请填写数量或备注");
-
-            const submitBtn = document.getElementById('submitBtn'); const originalText = submitBtn.textContent;
-            submitBtn.disabled = true; submitBtn.textContent = "提交中...";
-            try {
-                const response = await authFetch('/orders/batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: orderItems, remark: remark }) });
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.detail || "提交失败");
-                alert(data.message || "提交成功！"); loadData(); 
-            } catch (error) { alert(error.message); } finally { submitBtn.disabled = false; submitBtn.textContent = originalText; }
-        }
-
+        // 密码修改
         const pwdModal = document.getElementById('passwordModal'); const pwdErrorMsg = document.getElementById('pwdErrorMsg');
         function showPasswordModal() { document.getElementById('oldPassword').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('confirmPassword').value = ''; pwdErrorMsg.classList.add('hidden'); pwdModal.classList.remove('hidden'); }
         function hidePasswordModal() { pwdModal.classList.add('hidden'); }
